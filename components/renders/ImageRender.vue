@@ -20,13 +20,13 @@ export default {
         y: 5,
         width: 15,
         height: 15,
-        src: null
-      }
+        src: null,
+      },
     }
   },
 
   computed: {
-    ...mapState(['country'])
+    ...mapState(['country']),
   },
 
   watch: {
@@ -37,7 +37,7 @@ export default {
       if (newValue && this.dbOptions) {
         this.copyOptions(await this.getOptionsFromDb())
       }
-    }
+    },
   },
 
   methods: {
@@ -56,7 +56,7 @@ export default {
       const vm = this
       if (!vm.image.dimensions || !vm.image.base64) {
         return {
-          src: vm.dbOptions.Source
+          src: vm.dbOptions.Source,
         }
       }
       const embeddedImageHeight =
@@ -71,10 +71,10 @@ export default {
             : vm.dbOptions.Decalage_y
         ),
         width: parseFloat(vm.dbOptions.Compression_x) * vm.width,
-        height: parseFloat(vm.dbOptions.Compression_y) * embeddedImageHeight
+        height: parseFloat(vm.dbOptions.Compression_y) * embeddedImageHeight,
       }
-    }
-  }
+    },
+  },
 }
 </script>
 

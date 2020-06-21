@@ -18,8 +18,8 @@ export default {
         width: 15,
         height: 15,
         fill: '#ff0000',
-        stroke: 'transparent'
-      }
+        stroke: 'transparent',
+      },
     }
   },
 
@@ -39,10 +39,10 @@ export default {
           this.dbOptions.Pos_y_fin - this.dbOptions.Pos_y_debut
         ),
         fill: filled ? `#${this.dbOptions.Couleur}` : 'transparent',
-        stroke: filled ? 'transparent' : `#${this.dbOptions.Couleur}`
+        stroke: filled ? 'transparent' : `#${this.dbOptions.Couleur}`,
       }
-    }
-  }
+    },
+  },
 }
 </script>
 

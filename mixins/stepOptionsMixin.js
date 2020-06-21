@@ -7,11 +7,11 @@ export default {
     issuenumber: { type: String },
     stepNumber: { type: Number },
     svgGroup: { type: Object },
-    dbOptions: { type: Object }
+    dbOptions: { type: Object },
   },
   data() {
     return {
-      options: {}
+      options: {},
     }
   },
   computed: {
@@ -20,7 +20,7 @@ export default {
     ...mapState('editingStep', {
       editingIssuenumber: 'issuenumber',
       editingStepNumber: 'stepNumber',
-      editingStepOptions: 'stepOptions'
+      editingStepOptions: 'stepOptions',
     }),
     svgMetadata() {
       return (
@@ -36,7 +36,7 @@ export default {
         this.editingStepNumber === this.stepNumber &&
         this.editingIssuenumber !== this.issuenumber
       )
-    }
+    },
   },
   watch: {
     editingStepNumber: {
@@ -45,7 +45,7 @@ export default {
         if (this.isEditingCurrentStep(newStepNumber, this.editingIssuenumber)) {
           this.setStepOptions(this.options)
         }
-      }
+      },
     },
     editingStepOptions: {
       deep: true,
@@ -68,10 +68,10 @@ export default {
           )
           this.copyOptions({
             ...this.options,
-            ...diffEditingStepOptions
+            ...diffEditingStepOptions,
           })
         }
-      }
+      },
     },
     editingIssuenumber: {
       immediate: true,
@@ -79,7 +79,7 @@ export default {
         if (this.isEditingCurrentStep(this.editingStepNumber, newIssuenumber)) {
           this.setStepOptions(this.options)
         }
-      }
+      },
     },
     options: {
       deep: true,
@@ -93,8 +93,8 @@ export default {
         ) {
           this.setStepOptions(newOptions)
         }
-      }
-    }
+      },
+    },
   },
   methods: {
     isEditingCurrentStep(editingStepNumber, editingIssuenumber) {
@@ -127,10 +127,10 @@ export default {
             (({ dx, dy }) => {
               vm.options.x += dx / vm.zoom
               vm.options.y += dy / vm.zoom
-            })
+            }),
         })
         .resizable({
-          edges: { right: true, bottom: true }
+          edges: { right: true, bottom: true },
         })
         .on(
           'resizemove',
@@ -141,7 +141,7 @@ export default {
             })
         )
     },
-    ...mapMutations('editingStep', { setEditingStepOptions: 'setStepOptions' })
+    ...mapMutations('editingStep', { setEditingStepOptions: 'setStepOptions' }),
   },
   async mounted() {
     const vm = this
@@ -159,5 +159,5 @@ export default {
         vm.options[optionName] = optionValue
       }
     })
-  }
+  },
 }

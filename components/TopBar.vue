@@ -17,7 +17,7 @@
                   min="1"
                   max="8"
                   step="0.5"
-                  style="width: 100%"
+                  style="width: 100%;"
               /></b-col>
             </b-row>
             <b-row>
@@ -67,7 +67,7 @@
           ><b-icon-arrows-angle-expand
         /></b-button>
         <b-collapse id="collapse-dimensions" class="mt-2">
-          <b-card class="mb-2" style="max-width: 12rem">
+          <b-card class="mb-2" style="max-width: 12rem;">
             <b-row>
               <b-col sm="6">
                 <label for="width">Width</label>
@@ -108,7 +108,7 @@
           :disabled="issuenumbers.length === 1"
           size="sm"
           @click="locked = !locked"
-          ><b-icon-lock v-if="locked"/><b-icon-unlock v-else
+          ><b-icon-lock v-if="locked" /><b-icon-unlock v-else
         /></b-button>
         <b-button
           v-b-tooltip.hover
@@ -121,7 +121,7 @@
         /></b-button>
       </b-col>
     </b-row>
-    <b-row align="center" class="pb-2" style="border-bottom: 1px solid grey">
+    <b-row align="center" class="pb-2" style="border-bottom: 1px solid grey;">
       <b-col align-self="center">
         <img :src="flagImageUrl" :alt="country" />&nbsp;{{ magazine }}&nbsp;{{
           issuenumbers[0]
@@ -139,7 +139,7 @@ import {
   BIconArrowsAngleExpand,
   BIconHouse,
   BIconLock,
-  BIconUnlock
+  BIconUnlock,
 } from 'bootstrap-vue'
 
 export default {
@@ -149,11 +149,11 @@ export default {
     BIconArchiveFill,
     BIconArrowsAngleExpand,
     BIconLock,
-    BIconUnlock
+    BIconUnlock,
   },
   data() {
     return {
-      showSidebar: true
+      showSidebar: true,
     }
   },
   computed: {
@@ -163,7 +163,7 @@ export default {
       },
       set(value) {
         this.$store.commit('ui/setLocked', value)
-      }
+      },
     },
     zoom: {
       get() {
@@ -171,7 +171,7 @@ export default {
       },
       set(value) {
         this.$store.commit('setZoom', value)
-      }
+      },
     },
     showIssueNumbers: {
       get() {
@@ -179,7 +179,7 @@ export default {
       },
       set(value) {
         this.$store.commit('ui/setShowIssueNumbers', value)
-      }
+      },
     },
     showPreviousEdge: {
       get() {
@@ -187,7 +187,7 @@ export default {
       },
       set(value) {
         this.$store.commit('ui/setShowPreviousEdge', value)
-      }
+      },
     },
     showNextEdge: {
       get() {
@@ -195,7 +195,7 @@ export default {
       },
       set(value) {
         this.$store.commit('ui/setShowNextEdge', value)
-      }
+      },
     },
     flagImageUrl() {
       return `${process.env.DM_URL}/images/flags/${this.country}.png`
@@ -207,8 +207,8 @@ export default {
       'magazine',
       'issuenumbers',
       'edgesBefore',
-      'edgesAfter'
-    ])
+      'edgesAfter',
+    ]),
   },
   methods: {
     getEdgeCanvasRefId(issuenumber) {
@@ -226,18 +226,18 @@ export default {
               issuenumber,
               content: document.getElementById(
                 vm.getEdgeCanvasRefId(issuenumber)
-              ).outerHTML
+              ).outerHTML,
             })
             .then(() => {
               vm.$bvToast.toast('Export done', {
-                toaster: 'b-toaster-top-center'
+                toaster: 'b-toaster-top-center',
               })
             })
         })
       })
     },
-    ...mapMutations(['setDimensions'])
-  }
+    ...mapMutations(['setDimensions']),
+  },
 }
 </script>
 

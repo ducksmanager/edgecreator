@@ -13,8 +13,8 @@ export default {
   data() {
     return {
       options: {
-        fill: '#ff0000'
-      }
+        fill: '#ff0000',
+      },
     }
   },
 
@@ -32,10 +32,10 @@ export default {
         )
       }
       return {
-        fill: `#${this.dbOptions.Couleur}`
+        fill: `#${this.dbOptions.Couleur}`,
       }
-    }
-  }
+    },
+  },
 }
 </script>
 

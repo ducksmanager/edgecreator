@@ -21,10 +21,10 @@ export default {
           [1, 5],
           [4, 25],
           [7, 14],
-          [14, 12]
+          [14, 12],
         ],
-        fill: '#000000'
-      }
+        fill: '#000000',
+      },
     }
   },
 
@@ -35,7 +35,7 @@ export default {
         onmove: ({ dy, dx }) => {
           vm.options.points = vm.options.points.map(([x, y]) => [
             x + dx / vm.zoom,
-            y + dy / vm.zoom
+            y + dy / vm.zoom,
           ])
         },
         onresizemove: ({ dy, dx }) => {
@@ -51,19 +51,19 @@ export default {
           const currentHeight = maxY - minY
           vm.options.points = points.map(([x, y]) => [
             x + widthMaxGrowth * ((x - minX) / currentWidth),
-            y + heightMaxGrowth * ((y - minY) / currentHeight)
+            y + heightMaxGrowth * ((y - minY) / currentHeight),
           ])
-        }
+        },
       })
     },
     async getOptionsFromDb() {
       const vm = this
       return {
         points: this.dbOptions.X.map((x, i) => [x, vm.options.Y[i]]),
-        fill: `#${this.dbOptions.Couleur}`
+        fill: `#${this.dbOptions.Couleur}`,
       }
-    }
-  }
+    },
+  },
 }
 </script>
 

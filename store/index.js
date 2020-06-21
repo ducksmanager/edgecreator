@@ -8,7 +8,7 @@ export const state = () => ({
   width: 15,
   height: 200,
   edgesBefore: [],
-  edgesAfter: []
+  edgesAfter: [],
 })
 
 export const mutations = {
@@ -36,7 +36,7 @@ export const mutations = {
   },
   setGalleryItems(state, { items: galleryItems }) {
     state.galleryItems = galleryItems
-  }
+  },
 }
 
 export const actions = {
@@ -66,14 +66,14 @@ export const actions = {
   async loadGalleryItems({ state, commit }) {
     const numericSortCollator = new Intl.Collator(undefined, {
       numeric: true,
-      sensitivity: 'base'
+      sensitivity: 'base',
     })
     const items = await this.$axios.$get(
       `/fs/browseElements/${state.country}/${state.magazine}`
     )
 
     commit('setGalleryItems', {
-      items: items.sort(numericSortCollator.compare)
+      items: items.sort(numericSortCollator.compare),
     })
   },
   async loadPublicationIssues({ state }) {
@@ -107,7 +107,7 @@ export const actions = {
           `/api/edges/${state.country}/${state.magazine}/${issuesBefore.join(
             ','
           )}`
-        )
+        ),
       })
     }
 
@@ -117,8 +117,8 @@ export const actions = {
           `/api/edges/${state.country}/${state.magazine}/${issuesAfter.join(
             ','
           )}`
-        )
+        ),
       })
     }
-  }
+  },
 }

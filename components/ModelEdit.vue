@@ -145,11 +145,11 @@ export default {
   name: 'ModelEdit',
   components: { FormColorInputRow, FormInputRow, Gallery },
   props: {
-    steps: { type: Array, required: true }
+    steps: { type: Array, required: true },
   },
   data() {
     return {
-      clickedImage: null
+      clickedImage: null,
     }
   },
   computed: {
@@ -159,7 +159,7 @@ export default {
       },
       set(value) {
         this.$store.commit('hoveredStep/setStepNumber', value)
-      }
+      },
     },
     editingStepNumber: {
       get() {
@@ -167,17 +167,17 @@ export default {
       },
       set(value) {
         this.$store.commit('editingStep/setStepNumber', value)
-      }
+      },
     },
     ...mapState(['galleryItems', 'country']),
     ...mapState('editingStep', { editingStepOptions: 'stepOptions' }),
-    ...mapState('renders', ['supportedRenders'])
+    ...mapState('renders', ['supportedRenders']),
   },
   methods: {
     getElementUrl(elementFileName) {
       return `${process.env.EDGES_URL}/${this.country}/elements/${elementFileName}`
-    }
-  }
+    },
+  },
 }
 </script>
 <style>

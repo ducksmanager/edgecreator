@@ -27,7 +27,7 @@
 export default {
   data() {
     return {
-      edges: []
+      edges: [],
     }
   },
   mounted() {
@@ -38,14 +38,14 @@ export default {
         vm.edges = data.map((edge) => ({
           country: edge.pays,
           magazine: edge.magazine,
-          issuenumber: edge.numero
+          issuenumber: edge.numero,
         }))
       })
       .catch((e) => {
         console.error(e)
       })
   },
-  middleware: 'authenticated'
+  middleware: 'authenticated',
 }
 </script>
 <style scoped lang="css">

@@ -39,8 +39,8 @@ export default {
         height: 80,
         colorStart: '#D01721',
         colorEnd: '#0000FF',
-        direction: 'Vertical'
-      }
+        direction: 'Vertical',
+      },
     }
   },
 
@@ -59,10 +59,10 @@ export default {
           this.dbOptions.Pos_y_fin - this.dbOptions.Pos_y_debut
         ),
         fill: `#${this.dbOptions.Couleur}`,
-        direction: this.dbOptions.Sens
+        direction: this.dbOptions.Sens,
       }
-    }
-  }
+    },
+  },
 }
 </script>
 

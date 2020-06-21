@@ -40,7 +40,7 @@
             (component) => {
               steps.push({
                 component: component,
-                svgGroupElement: null
+                svgGroupElement: null,
               })
             }
           "
@@ -64,12 +64,12 @@ export default {
     TopBar,
     EdgeCanvas,
     PublishedEdge,
-    ModelEdit
+    ModelEdit,
   },
   data() {
     return {
       error: null,
-      steps: []
+      steps: [],
     }
   },
   computed: {
@@ -79,17 +79,17 @@ export default {
       },
       set(value) {
         this.$store.commit('setZoom', value)
-      }
+      },
     },
     ...mapState([
       'country',
       'magazine',
       'issuenumbers',
       'edgesBefore',
-      'edgesAfter'
+      'edgesAfter',
     ]),
     ...mapState('renders', ['supportedRenders']),
-    ...mapState('ui', ['showIssueNumbers', 'showPreviousEdge', 'showNextEdge'])
+    ...mapState('ui', ['showIssueNumbers', 'showPreviousEdge', 'showNextEdge']),
   },
   watch: {
     async issuenumbers(newValue) {
@@ -97,7 +97,7 @@ export default {
         this.loadGalleryItems()
         this.loadSurroundingEdges()
       }
-    }
+    },
   },
   async mounted() {
     const vm = this
@@ -106,7 +106,7 @@ export default {
       magazine,
       issuenumberMin,
       ,
-      issuenumberMax
+      issuenumberMax,
     ] = vm.$route.params.pathMatch.split('/')
     if ([country, magazine, issuenumberMin].includes(undefined)) {
       this.error = 'Invalid URL'
@@ -127,14 +127,14 @@ export default {
         const svgElement = doc.getElementsByTagName('svg')[0]
         vm.setDimensions({
           width: svgElement.getAttribute('width') / 1.5,
-          height: svgElement.getAttribute('height') / 1.5
+          height: svgElement.getAttribute('height') / 1.5,
         })
 
         vm.steps = Object.values(svgElement.childNodes)
           .filter((group) => group.nodeName === 'g')
           .map((group) => ({
             component: group.getAttribute('class'),
-            svgGroupElement: group
+            svgGroupElement: group,
           }))
       })
       .catch(async () => {
@@ -152,7 +152,7 @@ export default {
         if (dimensions) {
           vm.setDimensions({
             width: dimensions.options.Dimension_x,
-            height: dimensions.options.Dimension_y
+            height: dimensions.options.Dimension_y,
           })
         }
 
@@ -162,7 +162,7 @@ export default {
             component: vm.supportedRenders.find(
               (component) => component.originalName === step.nomFonction
             ).component,
-            dbOptions: step.options
+            dbOptions: step.options,
           }))
       })
   },
@@ -176,9 +176,9 @@ export default {
       'setIssuenumbersFromMinMax',
       'loadPublicationIssues',
       'loadSurroundingEdges',
-      'loadGalleryItems'
-    ])
-  }
+      'loadGalleryItems',
+    ]),
+  },
 }
 </script>
 <style>

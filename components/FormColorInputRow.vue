@@ -31,16 +31,16 @@ export default {
   props: {
     options: {
       type: Object,
-      required: true
+      required: true,
     },
     optionName: {
       type: String,
-      required: true
+      required: true,
     },
     canBeTransparent: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   data() {
     let originalColor = this.options[this.optionName]
@@ -48,9 +48,9 @@ export default {
       originalColor = '#000000'
     }
     return {
-      originalColor
+      originalColor,
     }
-  }
+  },
 }
 </script>
 <style></style>
