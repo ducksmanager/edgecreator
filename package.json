@@ -21,7 +21,7 @@
     "@uppy/locales": "^1.16.0",
     "@uppy/status-bar": "^1.7.6",
     "@uppy/url": "^1.5.11",
-    "@uppy/webcam": "^1.7.0",
+    "@uppy/webcam": "^1.8.1",
     "@uppy/xhr-upload": "^1.6.4",
     "base64-img": "^1.0.4",
     "body-parser": "^1.19.0",
