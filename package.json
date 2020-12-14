@@ -16,7 +16,7 @@
     "@nuxtjs/axios": "^5.12.2",
     "@nuxtjs/dotenv": "^1.4.0",
     "@uppy/core": "^1.14.1",
-    "@uppy/dashboard": "^1.13.0",
+    "@uppy/dashboard": "^1.13.1",
     "@uppy/drag-drop": "^1.4.21",
     "@uppy/locales": "^1.16.0",
     "@uppy/status-bar": "^1.8.0",
