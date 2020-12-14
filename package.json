@@ -18,7 +18,7 @@
     "@uppy/core": "^1.14.1",
     "@uppy/dashboard": "^1.13.0",
     "@uppy/drag-drop": "^1.4.21",
-    "@uppy/locales": "^1.16.0",
+    "@uppy/locales": "^1.17.0",
     "@uppy/status-bar": "^1.8.0",
     "@uppy/url": "^1.5.13",
     "@uppy/webcam": "^1.8.1",
