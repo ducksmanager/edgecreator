@@ -20,7 +20,7 @@
     "@uppy/drag-drop": "^1.4.21",
     "@uppy/locales": "^1.17.0",
     "@uppy/status-bar": "^1.8.0",
-    "@uppy/url": "^1.5.13",
+    "@uppy/url": "^1.5.14",
     "@uppy/webcam": "^1.8.1",
     "@uppy/xhr-upload": "^1.6.7",
     "base64-img": "^1.0.4",
