@@ -34,7 +34,7 @@
     "cookie-universal-nuxt": "^2.1.4",
     "cropperjs": "^1.5.9",
     "ducksmanager": "git+https://github.com/bperel/DucksManager-next.git",
-    "image-size": "^0.9.3",
+    "image-size": "^0.9.4",
     "interactjs": "^1.10.2",
     "nuxt": "^2.14.12",
     "nuxt-i18n": "^6.18.0",
