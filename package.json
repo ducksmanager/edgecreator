@@ -17,7 +17,7 @@
     "@nuxtjs/dotenv": "^1.4.0",
     "@nuxtjs/sentry": "^5.0.0",
     "@uppy/core": "^1.16.0",
-    "@uppy/dashboard": "^1.16.0",
+    "@uppy/dashboard": "^1.17.1",
     "@uppy/drag-drop": "^1.4.24",
     "@uppy/locales": "^1.17.1",
     "@uppy/status-bar": "^1.9.0",
