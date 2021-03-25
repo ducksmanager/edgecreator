@@ -37,7 +37,7 @@
     "image-size": "^0.9.7",
     "interactjs": "^1.10.8",
     "nuxt": "^2.15.3",
-    "nuxt-i18n": "^6.21.1",
+    "nuxt-i18n": "^6.22.0",
     "nuxt-svg-loader": "^1.2.0",
     "raw-body": "^2.4.1",
     "request": "^2.88.2",
