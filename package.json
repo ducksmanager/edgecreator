@@ -19,7 +19,7 @@
     "@uppy/core": "^1.17.0",
     "@uppy/dashboard": "^1.18.0",
     "@uppy/drag-drop": "^1.4.27",
-    "@uppy/locales": "^1.18.0",
+    "@uppy/locales": "^1.19.0",
     "@uppy/status-bar": "^1.9.3",
     "@uppy/url": "^1.5.20",
     "@uppy/webcam": "^1.8.8",
