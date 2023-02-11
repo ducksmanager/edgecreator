@@ -20,43 +20,18 @@
   </span>
 </template>
 
-<script>
-import { mapState } from 'pinia'
+<script setup lang="ts">
 import Issue from 'ducksmanager/assets/js/components/Issue.vue'
+import { computed } from '@nuxtjs/composition-api'
 import { coa } from '~/stores/coa'
 
-export default {
-  name: 'EdgeLink',
-  components: {
-    Issue,
-  },
-  props: {
-    publicationcode: {
-      type: String,
-      required: true,
-    },
-    issuenumber: {
-      type: String,
-      required: true,
-    },
-    designers: {
-      type: Array,
-      required: true,
-    },
-    photographers: {
-      type: Array,
-      required: true,
-    },
-    published: {
-      type: Boolean,
-      required: true,
-    },
-  },
+defineProps<{
+  publicationcode: string
+  issuenumber: string
+  designers: any[]
+  photographers: any[]
+  published: boolean
+}>()
 
-  computed: {
-    ...mapState(coa, ['publicationNames']),
-  },
-}
+const publicationNames = computed(() => coa().publicationNames)
 </script>
-
-<style scoped></style>

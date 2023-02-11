@@ -13,18 +13,12 @@
   </span>
   <span v-else><slot /></span>
 </template>
-<script>
-export default {
-  name: 'ConfirmEditMultipleValues',
-  props: {
-    values: {
-      type: Array,
-      required: true,
-    },
-  },
+<script lang="ts" setup>
+import { ref } from '@nuxtjs/composition-api'
 
-  data: () => ({
-    edit: false,
-  }),
-}
+defineProps<{
+  values: any[]
+}>()
+
+const edit = ref(false as boolean)
 </script>

@@ -88,71 +88,60 @@
     </template>
   </form-input-row>
 </template>
-<script>
-import { mapState, mapWritableState } from 'pinia'
-import { ui } from '~/stores/ui'
+<script setup lang="ts">
+import { computed, ref, watch } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
-import showEdgePhotosMixin from '@/mixins/showEdgePhotosMixin'
-import FormInputRow from '@/components/FormInputRow'
+import { globalEvent } from '~/stores/globalEvent'
+import { ui } from '~/stores/ui'
+import FormInputRow from '~/components/FormInputRow.vue'
 
-export default {
-  components: { FormInputRow },
-  mixins: [showEdgePhotosMixin],
-  props: {
-    options: {
-      type: Object,
-      required: true,
-    },
-    optionName: {
-      type: String,
-      required: true,
-    },
-    otherColors: {
-      type: Object,
-      required: true,
-    },
-    label: {
-      type: String,
-      default: null,
-    },
-    canBeTransparent: {
-      type: Boolean,
-      default: false,
-    },
+const props = withDefaults(
+  defineProps<{
+    options: any
+    optionName: string
+    otherColors: any
+    label?: string | null
+    canBeTransparent?: false | null
+  }>(),
+  {
+    label: null,
+    canBeTransparent: false,
+  }
+)
+
+const originalColor = ref(null as string | null)
+
+const inputValues = computed(() => props.options[props.optionName])
+const isTransparent = computed(() => inputValues.value[0] === 'transparent')
+const photoUrls = computed(() => main().photoUrls)
+const hasPhotoUrl = computed(() => Object.keys(photoUrls.value).length)
+const colorPickerOption = computed(() => ui().colorPickerOption)
+const showEdgePhotos = computed(() => ui().showEdgePhotos)
+
+watch(
+  () => inputValues.value,
+  (newValue) => {
+    if (newValue) {
+      let newColor = inputValues.value[0]
+      if (newColor === 'transparent') {
+        newColor = '#000000'
+      }
+      originalColor.value = newColor
+    }
   },
-  computed: {
-    ...mapWritableState(ui, ['colorPickerOption']),
-    inputValues() {
-      return this.options[this.optionName]
-    },
-    isTransparent() {
-      return this.inputValues[0] === 'transparent'
-    },
-    hasPhotoUrl() {
-      return Object.keys(this.photoUrls).length
-    },
-    ...mapState(main, ['photoUrls']),
-  },
-  watch: {
-    inputValues: {
-      immediate: true,
-      handler(newValue) {
-        if (newValue) {
-          let originalColor = this.inputValues[0]
-          if (originalColor === 'transparent') {
-            originalColor = '#000000'
-          }
-          this.originalColor = originalColor
-        }
-      },
-    },
-  },
-  methods: {
-    change(value) {
-      this.$root.$emit('set-options', { [this.optionName]: value })
-    },
-  },
+  { immediate: true }
+)
+
+const change = (value: any) => {
+  globalEvent().options = { [props.optionName]: value }
 }
+//
+//   methods: {
+//     change(value) {
+//       this.$root.$emit('set-options', { [this.optionName]: value })
+//     },
+//   },
+// }
 </script>
 <style lang="scss" scoped>
 ul {

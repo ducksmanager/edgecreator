@@ -31,15 +31,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from '@nuxtjs/composition-api'
+import { onMounted } from '@nuxtjs/composition-api'
 
-const props = defineProps<{
-  width?: number
-  height?: number
-}>()
-
-const width = ref(props.width || 15)
-const height = ref(props.height || 200)
+const props = withDefaults(
+  defineProps<{
+    width?: number
+    height?: number
+  }>(),
+  {
+    width: 15,
+    height: 200,
+  }
+)
 
 const emit = defineEmits<{
   (e: 'change', value: { width: number; height: number }): void
@@ -47,8 +50,8 @@ const emit = defineEmits<{
 
 onMounted(() => {
   emit('change', {
-    width: width.value,
-    height: height.value,
+    width: props.width,
+    height: props.height,
   })
 })
 

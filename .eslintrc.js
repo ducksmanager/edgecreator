@@ -14,5 +14,6 @@ module.exports = {
     'require-await': 'off',
     'vue/multi-word-component-names': 'off',
     '@typescript-eslint/no-this-alias': 'off',
+    'vue/component-name-in-template-casing': ['error', 'kebab-case'],
   },
 }
