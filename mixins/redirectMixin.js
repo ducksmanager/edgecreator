@@ -1,11 +1,12 @@
+import { useToast } from '~/composables/useToast'
+
 export default {
   watch: {
     '$route.hash': {
       immediate: true,
       handler(newValue) {
-        const vm = this
         const toastError = (message) => {
-          vm.$bvToast.toast(message, {
+          useToast().toast(message, {
             title: 'Error',
             autoHideDelay: 3000,
           })

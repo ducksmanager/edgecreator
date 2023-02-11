@@ -65,7 +65,7 @@
             ]"
           >
             <template #header>
-              <Issue
+              <issue
                 :publicationcode="crop.publicationCode"
                 :publicationname="publicationNames[crop.publicationCode]"
                 :issuenumber="crop.issueNumber"
@@ -119,10 +119,14 @@
 import Vue from 'vue'
 import Issue from 'ducksmanager/assets/js/components/Issue.vue'
 import { mapState } from 'pinia'
+import { useI18n } from 'nuxt-i18n-composable'
 import EdgeCanvas from '@/components/EdgeCanvas'
 import IssueSelect from '@/components/IssueSelect'
 import saveEdgeMixin from '@/mixins/saveEdgeMixin'
 import { coa } from '~/stores/coa'
+import { useToast } from '~/composables/useToast'
+
+const i18n = useI18n()
 
 export default {
   components: { Issue, IssueSelect, EdgeCanvas },
@@ -143,12 +147,12 @@ export default {
     addCrop() {
       const data = this.$refs.cropper.getData()
       if (data.height < data.width) {
-        this.$bvToast.toast(
-          this.$t(
+        useToast().toast(
+          i18n.t(
             `The width of your selection is bigger than its height! Make sure that the edges appear vertically on the photo.`
           ),
           {
-            title: this.$t('Error'),
+            title: i18n.t('Error'),
             autoHideDelay: 5000,
           }
         )
@@ -206,10 +210,10 @@ export default {
               url: URL.createObjectURL(file),
             })
           } else {
-            reject(new Error(this.$t('Your browser is not supported ')))
+            reject(new Error(i18n.t('Your browser is not supported ')))
           }
         } else {
-          reject(new Error(this.$t('Please choose a JPG or JPEG file')))
+          reject(new Error(i18n.t('Please choose a JPG or JPEG file')))
         }
       })
     },

@@ -7,6 +7,7 @@
 
 <script>
 import { mapActions } from 'pinia'
+import { useI18n } from 'nuxt-i18n-composable'
 import { main } from '~/stores/main'
 
 require('@uppy/core/dist/style.css')
@@ -15,6 +16,8 @@ require('@uppy/dashboard/dist/style.css')
 const Uppy = require('@uppy/core')
 const Dashboard = require('@uppy/dashboard')
 const XhrUpload = require('@uppy/xhr-upload')
+
+const i18n = useI18n()
 
 export default {
   name: 'Upload',
@@ -66,7 +69,7 @@ export default {
         inline: true,
         target: '.DashboardContainer',
         replaceTargetContent: true,
-        note: this.$t('Pictures up to 3 MB'),
+        note: i18n.t('Pictures up to 3 MB'),
         height: 470,
         browserBackButtonClose: true,
         proudlyDisplayPoweredByUppy: false,
@@ -75,7 +78,7 @@ export default {
         endpoint: '/fs/upload',
         getResponseError: (responseText) => {
           const { error, placeholders } = JSON.parse(responseText)
-          return new Error(this.$t(error, placeholders))
+          return new Error(i18n.t(error, placeholders))
         },
       })
       .run()

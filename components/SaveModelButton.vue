@@ -114,10 +114,13 @@ import {
   BIconX,
   BIconXSquareFill,
 } from 'bootstrap-vue'
+import { useI18n } from 'nuxt-i18n-composable'
 import { ui } from '~/stores/ui'
 import { main } from '~/stores/main'
 import { user } from '~/stores/user'
 import saveEdgeMixin from '@/mixins/saveEdgeMixin'
+
+const i18n = useI18n()
 
 export default {
   components: {
@@ -146,7 +149,7 @@ export default {
   }),
   computed: {
     label() {
-      return this.$t(
+      return i18n.t(
         this.withExport ? 'Export' : this.withSubmit ? 'Submit' : 'Save'
       )
     },

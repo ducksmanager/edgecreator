@@ -8,7 +8,7 @@
       @click="$emit('load-more', 'before')"
       >Load more...</b-button
     >
-    <Gallery
+    <gallery
       v-if="items"
       image-type="edges"
       :loading="isPopulating"
@@ -28,147 +28,130 @@
   </div>
 </template>
 
-<script>
-import { mapActions, mapState } from 'pinia'
+<script setup lang="ts">
+import { computed, ref, watch } from '@nuxtjs/composition-api'
 import Gallery from '@/components/Gallery'
-import modelLoadMixin from '@/mixins/modelLoadMixin'
+import modelLoad from '~/composables/modelLoad'
 import { edgeCatalog } from '~/stores/edgeCatalog'
 import { coa } from '~/stores/coa'
 
-export default {
-  name: 'EdgeGallery',
-  components: { Gallery },
-  mixins: [modelLoadMixin],
-  props: {
-    publicationcode: { type: String, required: true },
-    selected: { type: String, default: null },
-    hasMoreBefore: { type: Boolean, default: false },
-    hasMoreAfter: { type: Boolean, default: false },
-  },
-  data: () => ({
-    items: [],
-    isPopulating: false,
-  }),
-  computed: {
-    ...mapState(edgeCatalog, ['publishedEdges', 'publishedEdgesSteps']),
-    ...mapState(coa, ['issueNumbers']),
-  },
-  watch: {
-    publishedEdges: {
-      immediate: true,
-      deep: true,
-      async handler(publishedEdges) {
-        if (publishedEdges[this.publicationcode]) {
-          if (!this.isPopulating) {
-            this.isPopulating = true
-            await this.populateItems(
-              this.publicationcode,
-              publishedEdges[this.publicationcode]
-            )
-            this.isPopulating = false
+const { getDimensionsFromApi, getStepsFromApi } = modelLoad()
+
+const props = withDefaults(
+  defineProps<{
+    publicationcode: string
+    selected?: string | null
+    hasMoreBefore?: boolean
+    hasMoreAfter?: boolean
+  }>(),
+  { selected: null, hasMoreBefore: false, hasMoreAfter: false }
+)
+
+const items = ref([] as any[])
+const isPopulating = ref(false as boolean)
+
+const publishedEdges = computed(() => edgeCatalog().publishedEdges)
+const publishedEdgesSteps = computed(() => edgeCatalog().publishedEdgesSteps)
+const issueNumbers = computed(() => coa().issueNumbers)
+
+const populateItems = async (
+  publicationcode: string,
+  items: { [issuenumber: string]: any }
+) => {
+  const [countryCode, magazineCode] = publicationcode.split('/')
+  const publishedIssueModels = Object.values(items)
+    .map(({ modelId }) => modelId)
+    .filter((modelId) => !!modelId)
+  await edgeCatalog().getPublishedEdgesSteps({
+    publicationcode: props.publicationcode,
+    edgeModelIds: publishedIssueModels,
+  })
+  items.value = (
+    await Promise.all(
+      Object.keys(items).map(async (issuenumber) => {
+        const url = `/edges/${countryCode}/gen/${magazineCode}.${issuenumber}.png`
+        if (items[issuenumber].v3) {
+          return {
+            name: issuenumber,
+            quality: 1,
+            disabled: false,
+            tooltip: '',
+            url,
           }
         }
-      },
-    },
-    publicationcode: {
-      immediate: true,
-      async handler(publicationcode) {
-        if (this.publishedEdges[publicationcode]) {
-          if (!this.isPopulating) {
-            this.isPopulating = true
-            await this.populateItems(
-              publicationcode,
-              this.publishedEdges[publicationcode]
-            )
-            this.isPopulating = false
+        let quality
+        let tooltip
+        const allSteps =
+          publishedEdgesSteps.value[props.publicationcode]?.[issuenumber]
+        if (!allSteps) {
+          quality = 0
+          tooltip = 'No steps or dimensions found'
+        } else {
+          const issueStepWarnings: { [stepNumber: number]: string[] } = {}
+          const dimensions = getDimensionsFromApi(allSteps, null)
+          if (!dimensions) {
+            issueStepWarnings[-1] = ['No dimensions']
           }
+          const issueSteps = await getStepsFromApi(
+            issuenumber,
+            allSteps,
+            dimensions,
+            false,
+            (error: string, stepNumber: number) => {
+              if (!issueStepWarnings[stepNumber]) {
+                issueStepWarnings[stepNumber] = []
+              }
+              issueStepWarnings[stepNumber].push(`Step ${stepNumber}: ${error}`)
+            }
+          )
+          if (!issueSteps.length) {
+            issueStepWarnings[0] = ['No steps']
+            quality = 0
+          } else {
+            quality = Math.max(
+              0,
+              1 - Object.keys(issueStepWarnings).length / issueSteps.length
+            )
+          }
+          tooltip = Object.values(issueStepWarnings).join('\n')
         }
-      },
-    },
-  },
-  methods: {
-    async populateItemsIfNotOngoing() {},
-    async populateItems(publicationcode, items) {
-      const vm = this
-      const [countryCode, magazineCode] = publicationcode.split('/')
-      const publishedIssueModels = Object.values(items)
-        .map(({ modelId }) => modelId)
-        .filter((modelId) => !!modelId)
-      await this.getPublishedEdgesSteps({
-        publicationcode: this.publicationcode,
-        edgeModelIds: publishedIssueModels,
+        return {
+          name: issuenumber,
+          quality,
+          disabled: quality === 0,
+          tooltip,
+          url,
+        }
       })
-      this.items = (
-        await Promise.all(
-          Object.keys(items).map(async (issuenumber) => {
-            const url = `/edges/${countryCode}/gen/${magazineCode}.${issuenumber}.png`
-            if (items[issuenumber].v3) {
-              return {
-                name: issuenumber,
-                quality: 1,
-                disabled: false,
-                tooltip: '',
-                url,
-              }
-            }
-            let quality
-            let tooltip
-            const allSteps =
-              vm.publishedEdgesSteps[vm.publicationcode] &&
-              vm.publishedEdgesSteps[vm.publicationcode][issuenumber]
-            if (!allSteps) {
-              quality = 0
-              tooltip = 'No steps or dimensions found'
-            } else {
-              const issueStepWarnings = {}
-              const dimensions = vm.getDimensionsFromApi(allSteps, null)
-              if (!dimensions) {
-                issueStepWarnings[-1] = 'No dimensions'
-              }
-              const issueSteps = await vm.getStepsFromApi(
-                issuenumber,
-                allSteps,
-                dimensions,
-                false,
-                (error, stepNumber) => {
-                  if (!issueStepWarnings[stepNumber]) {
-                    issueStepWarnings[stepNumber] = []
-                  }
-                  issueStepWarnings[stepNumber].push(
-                    `Step ${stepNumber}: ${error}`
-                  )
-                }
-              )
-              if (!issueSteps.length) {
-                issueStepWarnings[0] = 'No steps'
-                quality = 0
-              } else {
-                quality = Math.max(
-                  0,
-                  1 - Object.keys(issueStepWarnings).length / issueSteps.length
-                )
-              }
-              tooltip = Object.values(issueStepWarnings).join('\n')
-            }
-            return {
-              name: issuenumber,
-              quality,
-              disabled: quality === 0,
-              tooltip,
-              url,
-            }
-          })
-        )
-      ).sort(({ name: name1 }, { name: name2 }) =>
-        Math.sign(
-          vm.issueNumbers[vm.publicationcode].indexOf(name1) -
-            vm.issueNumbers[vm.publicationcode].indexOf(name2)
-        )
-      )
-    },
-    ...mapActions(edgeCatalog, ['getPublishedEdgesSteps']),
-  },
+    )
+  ).sort(({ name: name1 }, { name: name2 }) =>
+    Math.sign(
+      issueNumbers.value[props.publicationcode].indexOf(name1) -
+        issueNumbers.value[props.publicationcode].indexOf(name2)
+    )
+  )
 }
+
+const onPublicationOrEdgeChange = async () => {
+  if (publishedEdges.value[props.publicationcode]) {
+    if (!isPopulating.value) {
+      isPopulating.value = true
+      await populateItems(
+        props.publicationcode,
+        publishedEdges.value[props.publicationcode]
+      )
+      isPopulating.value = false
+    }
+  }
+}
+
+watch(() => publishedEdges.value, onPublicationOrEdgeChange, {
+  deep: true,
+  immediate: true,
+})
+watch(() => props.publicationcode, onPublicationOrEdgeChange, {
+  immediate: true,
+})
 </script>
 
 <style scoped>

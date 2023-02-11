@@ -7,7 +7,7 @@
       'edge-canvas': true,
       'hide-overflow': !showEdgeOverflow,
       'position-relative': true,
-      editing: editingIssuenumbers.includes(issuenumber),
+      editing: editingStepStore.issuenumbers.includes(issuenumber),
     }"
     :viewBox="`0 0 ${width} ${height}`"
     :width="zoom * width"
@@ -16,7 +16,7 @@
     xmlns:xlink="http://www.w3.org/1999/xlink"
     preserveAspectRatio="none"
     @mousemove="setPosition"
-    @mouseout="positionInCanvas = null"
+    @mouseout="uiStore.positionInCanvas = null"
   >
     <metadata v-if="photoUrl" type="photo">
       {{ photoUrl }}
@@ -41,29 +41,28 @@
       :class="{
         [step.component]: true,
         hovered:
-          hoveredStepNumber === stepNumber &&
-          editingIssuenumbers.includes(issuenumber),
+          hoveredStepStore.stepNumber === stepNumber &&
+          editingStepStore.issuenumbers.includes(issuenumber),
       }"
       @mousedown.exact="
         replaceEditingIssuenumberIfNotAlreadyEditing(issuenumber)
-        editingStepNumber = stepNumber
+        editingStepStore.stepNumber = stepNumber
       "
       @mousedown.shift="
-        addEditingIssuenumber(issuenumber)
-        editingStepNumber = stepNumber
+        editingStepStore.addIssuenumber(issuenumber)
+        editingStepStore.stepNumber = stepNumber
       "
       @mouseover="
-        hoveredStepNumber = stepNumber
-        hoveredIssuenumber = issuenumber
+        hoveredStepStore.stepNumber = stepNumber
+        hoveredStepStore.issuenumber = issuenumber
       "
       @mouseout="
-        hoveredStepNumber = null
-        hoveredIssuenumber = null
+        hoveredStepStore.stepNumber = null
+        hoveredStepStore.issuenumber = null
       "
     >
       <component
         :is="`${step.component}Render`"
-        v-if="$options.components[`${step.component}Render`]"
         v-show="step.options && step.options.visible !== false"
         :issuenumber="issuenumber"
         :dimensions="dimensions"
@@ -83,86 +82,46 @@
     />
   </svg>
 </template>
-<script>
-import { mapActions, mapState, mapWritableState } from 'pinia'
+<script setup lang="ts">
+import { computed, ref } from '@nuxtjs/composition-api'
 import { ui } from '~/stores/ui'
 import { hoveredStep } from '~/stores/hoveredStep'
 import { editingStep } from '~/stores/editingStep'
-import { user } from '~/stores/user'
-import { main } from '~/stores/main'
-import RectangleRender from '@/components/renders/RectangleRender'
-import PolygonRender from '@/components/renders/PolygonRender'
-import ArcCircleRender from '@/components/renders/ArcCircleRender'
-import StapleRender from '@/components/renders/StapleRender'
-import ImageRender from '@/components/renders/ImageRender'
-import FillRender from '@/components/renders/FillRender'
-import TextRender from '@/components/renders/TextRender'
-import GradientRender from '@/components/renders/GradientRender'
 
-export default {
-  name: 'EdgeCanvas',
-  components: {
-    RectangleRender,
-    PolygonRender,
-    ArcCircleRender,
-    StapleRender,
-    ImageRender,
-    FillRender,
-    TextRender,
-    GradientRender,
-  },
-  props: {
-    issuenumber: { type: String, required: true },
-    dimensions: { type: Object, required: true },
-    steps: { type: Array, required: true },
-    photoUrl: { type: String, default: null },
-    contributors: { type: Object, required: true },
-  },
-  data() {
-    return {
-      borderWidth: 1,
-    }
-  },
-  computed: {
-    ...mapState(user, ['allUsers']),
-    ...mapWritableState(hoveredStep, {
-      hoveredStepNumber: 'stepNumber',
-      hoveredIssuenumber: 'issuenumber',
-    }),
-    ...mapWritableState(editingStep, {
-      editingStepNumber: 'stepNumber',
-      editingIssuenumbers: 'issuenumbers',
-    }),
-    ...mapState(ui, ['zoom', 'showEdgeOverflow']),
-    ...mapWritableState(ui, ['positionInCanvas']),
-    width() {
-      return this.dimensions.width
-    },
-    height() {
-      return this.dimensions.height
-    },
-  },
+const props = withDefaults(
+  defineProps<{
+    issuenumber: string
+    dimensions: any
+    steps: any[]
+    photoUrl?: string | null
+    contributors: any
+  }>(),
+  { photoUrl: null }
+)
 
-  methods: {
-    ...mapActions(main, ['addContributor']),
-    ...mapActions(editingStep, {
-      addEditingIssuenumber: 'addIssuenumber',
-      replaceEditingIssuenumber: 'replaceIssuenumber',
-    }),
-    setPosition({ clientX: left, clientY: top }) {
-      const vm = this
-      const { left: svgLeft, top: svgTop } =
-        this.$refs.canvas.getBoundingClientRect()
-      this.positionInCanvas = [left - svgLeft, top - svgTop].map((value) =>
-        parseInt(value / vm.zoom)
-      )
-    },
-    replaceEditingIssuenumberIfNotAlreadyEditing(issuenumber) {
-      if (!this.editingIssuenumbers.includes(issuenumber)) {
-        this.replaceEditingIssuenumber(issuenumber)
-      }
-    },
-  },
+const borderWidth = ref(1 as number)
+
+const canvas = ref(null as HTMLElement | null)
+
+const hoveredStepStore = hoveredStep()
+const editingStepStore = editingStep()
+const uiStore = ui()
+
+const zoom = computed(() => uiStore.zoom)
+const showEdgeOverflow = computed(() => uiStore.showEdgeOverflow)
+const width = computed(() => props.dimensions.width)
+const height = computed(() => props.dimensions.height)
+
+const setPosition = ({ clientX: left, clientY: top }: MouseEvent) => {
+  const { left: svgLeft, top: svgTop } = canvas.value!.getBoundingClientRect()
+  uiStore.positionInCanvas = [left - svgLeft, top - svgTop].map(
+    (value) => value / zoom.value
+  )
+}
+const replaceEditingIssuenumberIfNotAlreadyEditing = (issuenumber: string) => {
+  if (!editingStepStore.issuenumbers.includes(issuenumber)) {
+    editingStepStore.replaceIssuenumber(issuenumber)
+  }
 }
 </script>
 

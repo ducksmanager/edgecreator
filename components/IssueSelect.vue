@@ -13,7 +13,7 @@
     />
     <template v-if="currentCountryCode && currentPublicationCode">
       <template v-if="edgeGallery">
-        <EdgeGallery
+        <edge-gallery
           v-if="isCatalogLoaded"
           :publicationcode="currentPublicationCode"
           :selected="currentIssueNumber"
@@ -67,11 +67,14 @@
 </template>
 <script>
 import { mapActions, mapState } from 'pinia'
+import { useI18n } from 'nuxt-i18n-composable'
 import Dimensions from '@/components/Dimensions'
 import edgeCatalogMixin from '@/mixins/edgeCatalogMixin'
 import EdgeGallery from '@/components/EdgeGallery'
 import { coa } from '~/stores/coa'
 import { edgeCatalog } from '~/stores/edgeCatalog'
+
+const i18n = useI18n()
 
 export default {
   components: { EdgeGallery, Dimensions },
@@ -102,7 +105,7 @@ export default {
     countriesWithSelect() {
       return (
         this.countryNames && [
-          { value: null, text: this.$t('Select a country') },
+          { value: null, text: i18n.t('Select a country') },
           ...Object.keys(this.countryNames).map((countryName) => ({
             value: countryName,
             text: this.countryNames[countryName],
@@ -136,7 +139,7 @@ export default {
       return (
         this.publicationIssues &&
         this.publishedEdges[this.currentPublicationCode] && [
-          { value: null, text: this.$t('Select an issue number') },
+          { value: null, text: i18n.t('Select an issue number') },
           ...this.issueNumbers[vm.currentPublicationCode].map((issuenumber) => {
             const status = this.getEdgeStatus({
               country: this.currentCountryCode,
@@ -146,7 +149,7 @@ export default {
             return {
               value: issuenumber,
               text: `${issuenumber}${
-                status === 'none' ? '' : ` (${this.$t(status)})`
+                status === 'none' ? '' : ` (${i18n.t(status)})`
               }`,
               disabled:
                 (this.disableOngoingOrPublished && status !== 'none') ||

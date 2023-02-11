@@ -36,6 +36,7 @@
 
 <script>
 import redirectMixin from '@/mixins/redirectMixin'
+import { useToast } from '~/composables/useToast'
 
 const crypto = require('crypto')
 
@@ -76,7 +77,7 @@ export default {
           vm.$router.push('/')
         })
         .catch((e) => {
-          vm.$bvToast.toast(e.message, {
+          useToast().toast(e.message, {
             title: 'Error',
             autoHideDelay: 3000,
           })

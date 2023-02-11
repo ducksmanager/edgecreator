@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import stepOptionsMixin from '@/mixins/stepOptionsMixin'
+import stepOptionsMixin from '~/composables/stepOptionsMixin'
 
 export default {
   mixins: [stepOptionsMixin],

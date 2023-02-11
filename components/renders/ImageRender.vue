@@ -16,11 +16,11 @@
 import { mapState } from 'pinia'
 
 import { main } from '~/stores/main'
-import stepOptionsMixin from '@/mixins/stepOptionsMixin'
-import base64Mixin from '@/mixins/base64Mixin'
+import stepOptionsMixin from '~/composables/stepOptionsMixin'
+import { loadImage } from '~/composables/base64'
 
 export default {
-  mixins: [stepOptionsMixin, base64Mixin],
+  mixins: [stepOptionsMixin],
 
   props: {
     options: {
@@ -51,7 +51,7 @@ export default {
       immediate: true,
       async handler() {
         if (this.effectiveSource) {
-          this.loadImage(
+          loadImage(
             `${process.env.EDGES_URL_PUBLIC}/${this.country}/elements/${this.effectiveSource}`
           )
         }

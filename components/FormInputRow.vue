@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { computed } from '@nuxtjs/composition-api'
 import { globalEvent } from '~/stores/globalEvent'
+import ConfirmEditMultipleValues from '~/components/ConfirmEditMultipleValues.vue'
 
 const props = withDefaults(
   defineProps<{

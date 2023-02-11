@@ -1,4 +1,7 @@
 import { set, nextTick } from 'vue'
+import { useI18n } from 'nuxt-i18n-composable'
+
+const i18n = useI18n()
 
 export default {
   data: () => ({
@@ -40,7 +43,7 @@ export default {
         previousIssueComponents !== currentIssueComponents
       ) {
         throw new Error(
-          this.$t(
+          i18n.t(
             `Issue numbers {completedIssuenumber} and {issuenumber} ` +
               `don't have the same components` +
               `: {completedIssueSteps} vs {currentIssueComponents}`,

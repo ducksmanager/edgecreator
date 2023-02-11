@@ -20,11 +20,11 @@
 </template>
 
 <script>
-import stepOptionsMixin from '@/mixins/stepOptionsMixin'
-import base64Mixin from '@/mixins/base64Mixin'
+import stepOptionsMixin from '~/composables/stepOptionsMixin'
+import { loadImage } from '~/composables/base64'
 
 export default {
-  mixins: [stepOptionsMixin, base64Mixin],
+  mixins: [stepOptionsMixin],
 
   props: {
     options: {
@@ -63,7 +63,7 @@ export default {
       immediate: true,
       async handler(newValue) {
         if (newValue) {
-          this.loadImage(this.textImage.url)
+          loadImage(this.textImage.url)
         }
       },
     },
