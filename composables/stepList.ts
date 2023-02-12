@@ -8,7 +8,16 @@ import dimensions from '~/composables/dimensions'
 const i18n = useI18n()
 
 export default () => {
-  const steps = ref({} as { [issuenumber: string]: any[] })
+  const steps = ref(
+    {} as {
+      [issuenumber: string]: {
+        component: string
+        options: {
+          [optionName: string]: any
+        }
+      }[]
+    }
+  )
 
   watch(
     () => globalEvent().options,
@@ -130,6 +139,7 @@ export default () => {
   }
 
   return {
+    steps,
     checkSameComponentsAsCompletedEdge,
     setSteps,
     copyDimensionsAndSteps,

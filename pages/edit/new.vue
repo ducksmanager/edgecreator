@@ -18,40 +18,41 @@
     />
   </b-modal>
 </template>
-<script>
+<script lang="js">
+// middleware: ['authenticated', 'is-editor'],
+</script>
+<script setup lang="ts">
+import { computed, ref, useRouter } from '@nuxtjs/composition-api'
 import IssueSelect from '@/components/IssueSelect'
 
-export default {
-  components: { IssueSelect },
-  middleware: ['authenticated', 'is-editor'],
-  data() {
-    return {
-      issueData: null,
-    }
-  },
-  computed: {
-    issueSpecification() {
-      if (this.issueData === null) {
-        return null
-      } else {
-        switch (this.issueData.editMode) {
-          case 'range':
-            return `${this.issueData.issueNumber} to ${this.issueData.issueNumberEnd}`
-        }
-        return this.issueData.issueNumber
-      }
-    },
-  },
-  methods: {
-    toDashboard() {
-      window.location.replace(`/`)
-    },
-    startEditing() {
-      window.location.replace(
-        `/edit/${this.issueData.publicationCode} ${this.issueSpecification}`
-      )
-    },
-  },
+const router = useRouter()
+
+const issueData = ref(
+  null as {
+    editMode: 'range' | 'single'
+    countryCode: string
+    publicationCode: string
+    issueNumber: string
+    issueNumberEnd: string
+    width: number
+    height: number
+  } | null
+)
+
+const issueSpecification = computed(() =>
+  issueData.value === null
+    ? null
+    : issueData.value.editMode === 'range'
+    ? `${issueData.value.issueNumber} to ${issueData.value.issueNumberEnd}`
+    : issueData.value.issueNumber
+)
+
+const toDashboard = () => {
+  router.push(`/`)
+}
+
+const startEditing = () => {
+  router.push(`/edit/${issueData.value!.publicationCode} ${issueSpecification}`)
 }
 </script>
 <style></style>

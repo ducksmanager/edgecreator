@@ -111,20 +111,19 @@ export const coa = defineStore('coa', {
           )
         ),
       ]
+      const data = (
+        await main().getChunkedRequests({
+          api: coaApi,
+          url: URL_PREFIX_AUTHORS,
+          parametersToChunk: newPersonNames,
+          chunkSize: 10,
+        })
+      ).reduce((acc, result) => ({ ...acc, ...result.data }), {})
       return (
         newPersonNames.length &&
         this.setPersonNames({
           ...(this.personNames || {}),
-          ...(await main()
-            .getChunkedRequests({
-              api: coaApi,
-              url: URL_PREFIX_AUTHORS,
-              parametersToChunk: newPersonNames,
-              chunkSize: 10,
-            })
-            .then((data) =>
-              data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
-            )),
+          ...data,
         })
       )
     },
@@ -138,30 +137,24 @@ export const coa = defineStore('coa', {
           )
         ),
       ]
-      return (
-        newPublicationCodes.length &&
-        this.addIssueNumbers(
-          await main()
-            .getChunkedRequests({
-              api: coaApi,
-              url: URL_PREFIX_ISSUES,
-              parametersToChunk: newPublicationCodes,
-              chunkSize: 1,
-            })
-            .then((data) =>
-              data.reduce(
-                (acc, result) => ({
-                  ...acc,
-                  [result.config.url.replace(URL_PREFIX_ISSUES, '')]:
-                    result.data.map((issueNumber) =>
-                      issueNumber.replace(/ /g, '')
-                    ),
-                }),
-                {}
-              )
-            )
-        )
+      const data = (
+        await main().getChunkedRequests({
+          api: coaApi,
+          url: URL_PREFIX_ISSUES,
+          parametersToChunk: newPublicationCodes,
+          chunkSize: 1,
+        })
+      ).reduce(
+        (acc, result) => ({
+          ...acc,
+          [result.config.url.replace(URL_PREFIX_ISSUES, '')]: result.data.map(
+            (issueNumber: string) => issueNumber.replace(/ /g, '')
+          ),
+        }),
+        {}
       )
+
+      return newPublicationCodes.length && this.addIssueNumbers(data)
     },
 
     async fetchIssueCounts() {

@@ -1,12 +1,15 @@
 import { set } from 'vue'
 import { defineStore } from 'pinia'
+import axios from 'axios'
 import { main } from '~/stores/main'
 
 const URL_PREFIX_STEPS = '/api/edgecreator/v2/model/'
 
 export const edgeCatalog = defineStore('edgeCatalog', {
   state: () => ({
-    currentEdges: {},
+    currentEdges: {} as {
+      [publicationcode: string]: { country: string; magazine: string }
+    },
     publishedEdges: {} as {
       [publicationcode: string]: { [issuenumber: string]: object }
     },
@@ -14,10 +17,14 @@ export const edgeCatalog = defineStore('edgeCatalog', {
   }),
 
   actions: {
-    addCurrentEdges(edges) {
+    addCurrentEdges(edges: {
+      [publicationcode: string]: { country: string; magazine: string }
+    }) {
       this.currentEdges = { ...this.currentEdges, ...edges }
     },
-    addPublishedEdges(publishedEdges) {
+    addPublishedEdges(publishedEdges: {
+      [publicationcode: string]: { [issuenumber: string]: object }
+    }) {
       Object.keys(publishedEdges).forEach((publicationcode) => {
         const publicationEdges = publishedEdges[publicationcode]
         if (!this.publishedEdges[publicationcode]) {
@@ -57,21 +64,14 @@ export const edgeCatalog = defineStore('edgeCatalog', {
       publicationcode: string
       edgeModelIds: number[]
     }) {
-      const newModelIds = [
-        ...new Set(
-          edgeModelIds.filter(
-            (modelId) =>
-              !Object.keys(this.publishedEdgesSteps).includes(modelId)
-          )
-        ),
-      ]
+      const newModelIds = edgeModelIds
       return (
         newModelIds.length &&
         this.addPublishedEdgesSteps({
           publicationcode,
           publishedEdgesSteps: await main()
             .getChunkedRequests({
-              api: this.$nuxt.$axios,
+              api: axios.create({}),
               url: URL_PREFIX_STEPS,
               parametersToChunk: newModelIds,
               chunkSize: 10,

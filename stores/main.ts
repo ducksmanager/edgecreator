@@ -1,7 +1,6 @@
 import { set } from 'vue'
 import { defineStore } from 'pinia'
-import axios from 'axios'
-import { NuxtAxiosInstance } from '@nuxtjs/axios'
+import axios, { AxiosInstance } from 'axios'
 import { coa } from './coa'
 
 const numericSortCollator = new Intl.Collator(undefined, {
@@ -29,12 +28,14 @@ export const main = defineStore('main', {
   }),
 
   getters: {
-    publicationcode: ({ country, magazine }): string =>
-      `${country}/${magazine}`,
+    publicationcode(): string {
+      return `${this.country}/${this.magazine}`
+    },
 
-    publicationIssues() {
+    publicationIssues(): string[] {
       return coa().issueNumbers[this.publicationcode] || []
     },
+
     publicationElementsForGallery: ({ country, publicationElements }) =>
       publicationElements &&
       publicationElements.map((elementFileName) => ({
@@ -126,7 +127,7 @@ export const main = defineStore('main', {
           (issue) => issue === max
         )
         if (lastIssueIndex === -1) {
-          ;[lastIssueIndex] = Object.keys(this.publicationIssues).slice(-1)
+          lastIssueIndex = this.publicationIssues.length - 1
           console.warn(
             `Issue ${max} doesn't exist, falling back to ${this.publicationIssues[lastIssueIndex]}`
           )
@@ -140,7 +141,7 @@ export const main = defineStore('main', {
     async loadItems({ itemType }: { itemType: string }) {
       const items = (
         await axios.get(`/fs/browse/${itemType}/${this.publicationcode}`)
-      ).sort(numericSortCollator.compare)
+      ).data.sort(numericSortCollator.compare)
       if (itemType === 'elements') {
         this.publicationElements = items
       } else {
@@ -171,16 +172,17 @@ export const main = defineStore('main', {
       )
 
       const getEdgePublicationStates = async (edges: string[]) =>
-        axios
-          .get(`/api/edges/${this.publicationcode}/${edges.join(',')}`)
-          .then((data) =>
-            data.sort(
-              ({ issuenumber: issuenumber1 }, { issuenumber: issuenumber2 }) =>
-                Math.sign(
-                  edges.indexOf(issuenumber1) - edges.indexOf(issuenumber2)
-                )
-            )
+        (
+          await axios.get(
+            `/api/edges/${this.publicationcode}/${edges.join(',')}`
           )
+        ).data.sort(
+          (
+            { issuenumber: issuenumber1 }: { issuenumber: string },
+            { issuenumber: issuenumber2 }: { issuenumber: string }
+          ) =>
+            Math.sign(edges.indexOf(issuenumber1) - edges.indexOf(issuenumber2))
+        )
 
       if (issuesBefore.length) {
         this.edgesBefore = await getEdgePublicationStates(issuesBefore)
@@ -198,7 +200,7 @@ export const main = defineStore('main', {
       chunkSize,
       suffix = '',
     }: {
-      api: NuxtAxiosInstance
+      api: AxiosInstance
       url: string
       parametersToChunk: (string | number)[]
       chunkSize: number

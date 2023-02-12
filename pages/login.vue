@@ -34,56 +34,52 @@
   </b-container>
 </template>
 
-<script>
+<script setup lang="ts">
+import crypto from 'crypto'
+import { ref, useRouter } from '@nuxtjs/composition-api'
+import axios from 'axios'
 import useRedirect from '@/composables/redirect'
 import { useToast } from '~/composables/useToast'
+import { useCookies } from '~/composables/useCookies'
+import { useGates } from '~/composables/useGates'
 
-const crypto = require('crypto')
-
-const roleMapping = {
+const roleMapping: { [label: string]: string } = {
   Affichage: 'display',
   Edition: 'edit',
   Admin: 'admin',
 }
 
 useRedirect()
+const router = useRouter()
 
-export default {
-  data() {
-    return {
-      loginUsername: null,
-      password: null,
-    }
-  },
-  methods: {
-    login() {
-      const password = crypto
-        .createHash('sha1')
-        .update(this.password)
-        .digest('hex')
-      const vm = this
-      this.$axios
-        .$get('/api/collection/privileges', {
-          headers: {
-            'x-dm-user': this.loginUsername,
-            'x-dm-pass': password,
-          },
-        })
-        .then((data) => {
-          vm.$cookies.setAll([
-            { name: 'dm-user', value: vm.loginUsername },
-            { name: 'dm-pass', value: password },
-          ])
-          vm.$gates.setRoles([roleMapping[data.EdgeCreator] || 'display'])
-          vm.$router.push('/')
-        })
-        .catch((e) => {
-          useToast().toast(e.message, {
-            title: 'Error',
-            autoHideDelay: 3000,
-          })
-        })
-    },
-  },
+const loginUsername = ref(null as string | null)
+const password = ref(null as string | null)
+
+const login = async () => {
+  const encryptedPassword = crypto
+    .createHash('sha1')
+    .update(password.value!)
+    .digest('hex')
+  try {
+    const data = (
+      await axios.get('/api/collection/privileges', {
+        headers: {
+          'x-dm-user': loginUsername.value,
+          'x-dm-pass': encryptedPassword,
+        },
+      })
+    ).data
+    useCookies().setAll([
+      { name: 'dm-user', value: loginUsername.value },
+      { name: 'dm-pass', value: encryptedPassword },
+    ])
+    useGates().setRoles([roleMapping[data.EdgeCreator] || 'display'])
+    router.push('/')
+  } catch (e) {
+    useToast().toast((e as { message: string }).message, {
+      title: 'Error',
+      autoHideDelay: 3000,
+    })
+  }
 }
 </script>

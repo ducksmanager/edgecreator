@@ -14,7 +14,7 @@
         <b-alert show variant="info">
           <template v-if="mostPopularIssuesInCollectionWithoutEdge.length">
             <uploadable-edges-carousel
-              :user-points="userPhotographerPoints"
+              :user-points="userStore.userPhotographerPoints"
               :issues="mostPopularIssuesInCollectionWithoutEdge"
               :publication-names="publicationNames"
             >
@@ -35,7 +35,7 @@
             </div>
           </template>
           <uploadable-edges-carousel
-            :user-points="userPhotographerPoints"
+            :user-points="userStore.userPhotographerPoints"
             :issues="mostWantedEdges"
             :publication-names="publicationNames"
           >
@@ -152,11 +152,14 @@
   </div>
 </template>
 
-<script>
+<script lang="js">
+// middleware: 'authenticated'
+</script>
+<script setup lang="ts">
 import UploadableEdgesCarousel from 'ducksmanager/assets/js/components/UploadableEdgesCarousel.vue'
 import Publication from 'ducksmanager/assets/js/components/Publication.vue'
-import { mapActions, mapState } from 'pinia'
-import { computed } from '@nuxtjs/composition-api'
+import { computed, onMounted, ref } from '@nuxtjs/composition-api'
+import axios from 'axios'
 import edgeCatalog from '~/composables/edgeCatalog'
 import EdgeLink from '@/components/EdgeLink'
 import SessionInfo from '@/components/SessionInfo'
@@ -170,85 +173,69 @@ const { getEdgeUrl } = svgUtils()
 const publicationNames = computed(() => coa().publicationNames)
 
 const { edgesByStatus, canEditEdge, loadCatalog } = edgeCatalog()
+const userStore = user()
+const collectionStore = collection()
 
-export default {
-  components: {
-    SessionInfo,
-    EdgeLink,
-    UploadableEdgesCarousel,
-    Publication,
-  },
-  mixins: [edgeCatalogMixin],
-  middleware: 'authenticated',
+const isUploadableEdgesCarouselReady = ref(false as boolean)
+const mostWantedEdges = ref(
+  null as
+    | { publicationCode: string; issuenumber: string; numberOfIssues: number }[]
+    | null
+)
 
-  data: () => ({
-    isUploadableEdgesCarouselReady: false,
-    mostWantedEdges: null,
-  }),
+const mostPopularIssuesInCollectionWithoutEdge = computed(() =>
+  collectionStore.popularIssuesInCollectionWithoutEdge
+    ?.sort(
+      (
+        { popularity: popularity1 }: { popularity: number },
+        { popularity: popularity2 }: { popularity: number }
+      ) => popularity2 - popularity1
+    )
+    .filter((_, index) => index < 10)
+)
 
-  computed: {
-    ...mapState(user, ['userPhotographerPoints']),
-    ...mapState(collection, [
-      'bookcase',
-      'popularIssuesInCollectionWithoutEdge',
+onMounted(async () => {
+  await userStore.fetchUserPoints()
+  await collectionStore.loadPopularIssuesInCollection()
+  await collectionStore.loadBookcase()
+  await loadMostWantedEdges()
+  await loadCatalog(true)
+  await coa().fetchPublicationNames([
+    ...new Set([
+      ...collectionStore.bookcase!.map(
+        ({ countryCode, magazineCode }) => `${countryCode}/${magazineCode}`
+      ),
+      ...mostWantedEdges.value!.map(({ publicationCode }) => publicationCode),
+      ...Object.values(edgeCatalogStore().currentEdges).map(
+        ({ country, magazine }) => `${country}/${magazine}`
+      ),
     ]),
+  ])
+  isUploadableEdgesCarouselReady.value = true
+})
 
-    mostPopularIssuesInCollectionWithoutEdge() {
-      const popularIssuesInCollectionWithoutEdge =
-        this.popularIssuesInCollectionWithoutEdge
-      return (
-        popularIssuesInCollectionWithoutEdge &&
-        popularIssuesInCollectionWithoutEdge
-          .sort(
-            ({ popularity: popularity1 }, { popularity: popularity2 }) =>
-              popularity2 - popularity1
-          )
-          .filter((_, index) => index < 10)
-      )
-    },
-  },
+const getPhotoUrl = (country: string, fileName: string) =>
+  `/edges/${country}/photos/${fileName}`
 
-  async mounted() {
-    await this.fetchUserPoints()
-    await this.loadPopularIssuesInCollection()
-    await this.loadBookcase()
-    await this.loadMostWantedEdges()
-    await loadCatalog(true)
-    await coa().fetchPublicationNames([
-      ...new Set([
-        ...this.bookcase.map(
-          ({ countryCode, magazineCode }) => `${countryCode}/${magazineCode}`
-        ),
-        ...this.mostWantedEdges.map(({ publicationCode }) => publicationCode),
-        ...Object.values(edgeCatalogStore().currentEdges).map(
-          ({ country, magazine }) => `${country}/${magazine}`
-        ),
-      ]),
-    ])
-    this.isUploadableEdgesCarouselReady = true
-  },
-
-  methods: {
-    ...mapActions(user, ['fetchUserPoints']),
-    ...mapActions(collection, [
-      'loadPopularIssuesInCollection',
-      'loadBookcase',
-    ]),
-    getPhotoUrl: (country, fileName) => `/edges/${country}/photos/${fileName}`,
-
-    async loadMostWantedEdges() {
-      this.mostWantedEdges = (
-        await this.$axios.$get('/wanted-edges')
-      ).wantedEdges
-        .slice(0, 10)
-        .map(({ publicationcode, issuenumber, numberOfIssues }) => ({
-          issueCode: `${publicationcode} ${issuenumber}`,
-          publicationCode: publicationcode,
-          issueNumber: issuenumber,
-          popularity: numberOfIssues,
-        }))
-    },
-  },
+const loadMostWantedEdges = async () => {
+  mostWantedEdges.value = (await axios.get('/wanted-edges')).data.wantedEdges
+    .slice(0, 10)
+    .map(
+      ({
+        publicationcode,
+        issuenumber,
+        numberOfIssues,
+      }: {
+        publicationcode: string
+        issuenumber: string
+        numberOfIssues: number
+      }) => ({
+        issueCode: `${publicationcode} ${issuenumber}`,
+        publicationCode: publicationcode,
+        issueNumber: issuenumber,
+        popularity: numberOfIssues,
+      })
+    )
 }
 </script>
 <style scoped lang="scss">

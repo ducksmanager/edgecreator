@@ -1,3 +1,3 @@
 import { getCurrentInstance } from 'vue'
-export const useGates = (): any =>
+export const useCookies = (): any =>
   getCurrentInstance()?.proxy.$ssrContext.cookies

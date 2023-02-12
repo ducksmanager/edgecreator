@@ -8,13 +8,13 @@
     fluid
   >
     <b-alert
-      v-for="(warning, idx) in warnings"
+      v-for="(warning, idx) in mainStore.warnings"
       :key="`warning-${idx}`"
       align="center"
       dismissible
       variant="warning"
       show
-      @dismissed="removeWarning(idx)"
+      @dismissed="mainStore.removeWarning(idx)"
     >
       {{ warning }}
     </b-alert>
@@ -128,14 +128,24 @@
     </b-row>
   </b-container>
 </template>
-<script>
-import { mapActions, mapState, mapWritableState } from 'pinia'
-
+<script lang="js">
+// export default {
+//   name: 'Edit',
+//   middleware: ['authenticated', 'is-editor'],
+</script>
+<script setup lang="ts">
 import { BIconCamera, BIconPencil } from 'bootstrap-vue'
+import {
+  computed,
+  onMounted,
+  ref,
+  useFetch,
+  useRoute,
+  watch,
+} from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
 import { user } from '~/stores/user'
 import { editingStep } from '~/stores/editingStep'
-import { renders } from '~/stores/renders'
 import { ui } from '~/stores/ui'
 import { edgeCatalog } from '~/stores/edgeCatalog'
 import TopBar from '@/components/TopBar'
@@ -146,240 +156,203 @@ import PositionHelper from '@/components/PositionHelper'
 import dimensions from '~/composables/dimensions'
 import surroundingEdge from '~/composables/surroundingEdge'
 import stepList from '~/composables/stepList'
+import modelLoad from '~/composables/modelLoad'
+import { globalEvent } from '~/stores/globalEvent'
 
 const uiStore = ui()
+const mainStore = main()
 const { showPreviousEdge, showNextEdge } = surroundingEdge()
-const { addStep, removeStep, duplicateStep, swapSteps } = stepList()
+const { addStep, removeStep, duplicateStep, swapSteps, steps } = stepList()
+const { loadModel } = modelLoad()
+const route = useRoute()
 
-const { setDimensions } = dimensions()
+const error = ref(null as string | null)
+useFetch(async () => await user().fetchAllUsers())
 
-export default {
-  name: 'Edit',
-  components: {
-    PositionHelper,
-    TopBar,
-    EdgeCanvas,
-    PublishedEdge,
-    ModelEdit,
-    BIconPencil,
-    BIconCamera,
-  },
-  middleware: ['authenticated', 'is-editor'],
-  data() {
-    return {
-      error: null,
-    }
-  },
-  async fetch() {
-    await user().fetchAllUsers()
-  },
-  computed: {
-    editingDimensions() {
-      const vm = this
-      return this.editingIssuenumbers.reduce(
-        (acc, issuenumber) => ({
-          ...acc,
-          [issuenumber]: vm.dimensions[issuenumber],
-        }),
-        {}
-      )
-    },
-    editingSteps() {
-      const vm = this
-      return this.editingIssuenumbers.reduce(
-        (acc, issuenumber) => ({
-          ...acc,
-          [issuenumber]: vm.steps[issuenumber],
-        }),
-        {}
-      )
-    },
-    stepColors() {
-      const vm = this
-      const isColorOption = (optionName) =>
-        optionName.toLowerCase().includes('color') ||
-        ['fill', 'stroke'].includes(optionName)
-      return Object.keys(this.steps).reduce(
-        (acc, issuenumber) => ({
-          ...acc,
-          [issuenumber]: vm.steps[issuenumber].map((step) => [
-            ...new Set(
-              Object.keys(step.options || {})
-                .filter(
-                  (optionName) =>
-                    isColorOption(optionName) &&
-                    step.options[optionName] !== 'transparent'
-                )
-                .reduce(
-                  (acc, optionName) => [...acc, step.options[optionName]],
-                  []
-                )
-            ),
-          ]),
-        }),
-        {}
-      )
-    },
-    ...mapWritableState(main, ['country', 'magazine']),
-    ...mapWritableState(ui, ['zoom']),
-    ...mapState(main, [
-      'issuenumbers',
-      'edgesBefore',
-      'edgesAfter',
-      'photoUrls',
-      'contributors',
-      'warnings',
-    ]),
-    ...mapState(editingStep, {
-      editingIssuenumbers: 'issuenumbers',
-      editingStepNumber: 'stepNumber',
+const editingDimensions = computed(() =>
+  editingStep().issuenumbers.reduce(
+    (acc, issuenumber) => ({
+      ...acc,
+      [issuenumber]: dimensions().dimensions.value[issuenumber],
     }),
-    ...mapState(renders, ['supportedRenders']),
-    ...mapState(ui, ['zoom', 'showIssueNumbers', 'colorPickerOption']),
-    ...mapState(user, ['allUsers']),
-    ...mapState(edgeCatalog, ['currentEdges', 'publishedEdges']),
-  },
-  watch: {
-    async issuenumbers(newValue) {
-      if (newValue) {
-        await this.loadItems({ itemType: 'elements' })
-        await this.loadItems({ itemType: 'photos' })
-        await this.loadSurroundingEdges()
-      }
-    },
-    error(newValue) {
-      if (newValue) {
-        console.trace(newValue)
-      }
-    },
-  },
-  async mounted() {
-    const vm = this
-    let country, magazine, issuenumberMin, issuenumberMax, issuenumberOthers
-    try {
-      ;[
-        ,
-        country,
-        magazine,
-        issuenumberMin,
-        issuenumberMax,
-        issuenumberOthers,
-      ] = vm.$route.params.pathMatch.match(
-        /^([^/]+)\/([^ ]+) ([^, ]+)(?: to (.+))?(?:,([^$]+))?$/
-      )
-      magazine = magazine.replaceAll(/ +/g, '')
-    } catch (_) {
-      this.error = 'Invalid URL'
-      return
-    }
-    this.country = country
-    this.magazine = magazine
-    this.addEditIssuenumber(issuenumberMin)
+    {}
+  )
+)
 
-    await this.loadPublicationIssues()
+const editingSteps = computed(() =>
+  editingStep().issuenumbers.reduce(
+    (acc, issuenumber) => ({
+      ...acc,
+      [issuenumber]: steps.value[issuenumber],
+    }),
+    {}
+  )
+)
+const isColorOption = (optionName: string) =>
+  optionName.toLowerCase().includes('color') ||
+  ['fill', 'stroke'].includes(optionName)
 
-    try {
-      this.setIssuenumbers({
-        min: issuenumberMin,
-        max: issuenumberMax,
-        others: issuenumberOthers,
-      })
-
-      for (let idx = 0; idx < vm.issuenumbers.length; idx++) {
-        if (!Object.prototype.hasOwnProperty.call(vm.issuenumbers, idx)) {
-          continue
-        }
-        const issuenumber = vm.issuenumbers[idx]
-        try {
-          await vm.loadModel(country, magazine, issuenumber, issuenumber)
-        } catch {
-          if (vm.issuenumbers[idx - 1]) {
-            stepList().copyDimensionsAndSteps(
-              issuenumber,
-              vm.issuenumbers[idx - 1]
+const stepColors = computed(() =>
+  Object.keys(steps.value).reduce(
+    (acc, issuenumber) => ({
+      ...acc,
+      [issuenumber]: steps.value[issuenumber].map((step) => [
+        ...new Set(
+          Object.keys(step.options || {})
+            .filter(
+              (optionName) =>
+                isColorOption(optionName) &&
+                step.options[optionName] !== 'transparent'
             )
-          } else {
-            dimensions().setDimensions({ width: 15, height: 200 }, issuenumber)
-            stepList().setSteps(issuenumber, [])
-          }
-        }
-      }
-    } catch (e) {
-      this.error = e
-    }
-  },
-  methods: {
-    async overwriteModel({ publicationCode, issueNumber }) {
-      for (const targetIssuenumber of this.editingIssuenumbers) {
-        try {
-          await this.loadModel(
-            ...publicationCode.split('/'),
-            issueNumber,
-            targetIssuenumber
-          )
-        } catch (e) {
-          this.addWarning(e)
-        }
-      }
-    },
-    overwriteDimensions({ width, height }) {
-      for (const targetIssuenumber of this.editingIssuenumbers) {
-        dimensions().setDimensions(
-          {
-            width,
-            height,
-          },
-          targetIssuenumber
-        )
-      }
-    },
-    getImageUrl(fileType, fileName) {
-      return `/edges/${this.country}/${
-        fileType === 'elements' ? fileType : 'photos'
-      }/${fileName}`
-    },
-    setColorFromPhoto({ target: imgElement, offsetX, offsetY }) {
-      const canvas = document.createElement('canvas')
-      const context = canvas.getContext('2d')
-      canvas.width = imgElement.width
-      canvas.height = imgElement.height
-      context.drawImage(imgElement, 0, 0, imgElement.width, imgElement.height)
-      const color = context.getImageData(offsetX, offsetY, 1, 1).data
-      this.$root.$emit('set-options', {
-        [this.colorPickerOption]: this.rgbToHex(...color),
-      })
-    },
-    isPending(issuenumber) {
-      return !!this.currentEdges[
-        `${this.country}/${this.magazine} ${issuenumber}`
-      ]
-    },
-    isPublished(issuenumber) {
-      return !!(this.publishedEdges[`${this.country}/${this.magazine}`] || {})[
-        issuenumber
-      ]
-    },
-    rgbToHex: (r, g, b) => `#${((r << 16) | (g << 8) | b).toString(16)}`,
-    ...mapActions(main, [
-      'setPhotoUrl',
-      'addContributor',
-      'addWarning',
-      'removeWarning',
-    ]),
-    ...mapActions(editingStep, {
-      toggleEditIssuenumber: 'toggleIssuenumber',
-      replaceEditIssuenumber: 'replaceIssuenumber',
-      addEditIssuenumber: 'addIssuenumber',
-      addEditIssuenumbers: 'addIssuenumbers',
+            .reduce(
+              (acc, optionName) => [...acc, step.options[optionName]],
+              [] as any[]
+            )
+        ),
+      ]),
     }),
-    ...mapActions(main, [
-      'setIssuenumbers',
-      'loadPublicationIssues',
-      'loadSurroundingEdges',
-      'loadItems',
-    ]),
-  },
+    {}
+  )
+)
+
+watch(
+  () => editingStep().issuenumbers,
+  async (newValue) => {
+    if (newValue) {
+      await mainStore.loadItems({ itemType: 'elements' })
+      await mainStore.loadItems({ itemType: 'photos' })
+      await mainStore.loadSurroundingEdges()
+    }
+  }
+)
+watch(
+  () => error.value,
+  (newValue) => {
+    if (newValue) {
+      console.trace(newValue)
+    }
+  }
+)
+
+onMounted(async () => {
+  let country, magazine, issuenumberMin, issuenumberMax, issuenumberOthers
+  try {
+    ;[, country, magazine, issuenumberMin, issuenumberMax, issuenumberOthers] =
+      route.value.params.pathMatch.match(
+        /^([^/]+)\/([^ ]+) ([^, ]+)(?: to (.+))?(?:,([^$]+))?$/
+      )!
+    magazine = magazine.replaceAll(/ +/g, '')
+  } catch (_) {
+    error.value = 'Invalid URL'
+    return
+  }
+  mainStore.country = country
+  mainStore.magazine = magazine
+  editingStep().addIssuenumber(issuenumberMin)
+
+  await mainStore.loadPublicationIssues()
+
+  try {
+    mainStore.setIssuenumbers({
+      min: issuenumberMin,
+      max: issuenumberMax,
+      others: issuenumberOthers,
+    })
+
+    for (let idx = 0; idx < mainStore.issuenumbers.length; idx++) {
+      if (!Object.prototype.hasOwnProperty.call(mainStore.issuenumbers, idx)) {
+        continue
+      }
+      const issuenumber = mainStore.issuenumbers[idx]
+      try {
+        await loadModel(country, magazine, issuenumber, issuenumber)
+      } catch {
+        if (mainStore.issuenumbers[idx - 1]) {
+          stepList().copyDimensionsAndSteps(
+            issuenumber,
+            mainStore.issuenumbers[idx - 1]
+          )
+        } else {
+          dimensions().setDimensions({ width: 15, height: 200 }, issuenumber)
+          stepList().setSteps(issuenumber, [])
+        }
+      }
+    }
+  } catch (e) {
+    error.value = e as string
+  }
+})
+
+const overwriteModel = async ({
+  publicationCode,
+  issueNumber,
+}: {
+  publicationCode: string
+  issueNumber: string
+}) => {
+  const [country, magazine] = publicationCode.split('/')
+  for (const targetIssuenumber of editingStep().issuenumbers) {
+    try {
+      await loadModel(country, magazine, issueNumber, targetIssuenumber)
+    } catch (e) {
+      mainStore.addWarning(e as string)
+    }
+  }
 }
+const overwriteDimensions = ({
+  width,
+  height,
+}: {
+  width: number
+  height: number
+}) => {
+  for (const targetIssuenumber of editingStep().issuenumbers) {
+    dimensions().setDimensions(
+      {
+        width,
+        height,
+      },
+      targetIssuenumber
+    )
+  }
+}
+
+const getImageUrl = (fileType: string, fileName: string) =>
+  `/edges/${mainStore.country}/${
+    fileType === 'elements' ? fileType : 'photos'
+  }/${fileName}`
+
+const setColorFromPhoto = ({
+  target: imgElement,
+  offsetX,
+  offsetY,
+}: {
+  target: HTMLImageElement
+  offsetX: number
+  offsetY: number
+}) => {
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')!
+  canvas.width = imgElement.width
+  canvas.height = imgElement.height
+  context.drawImage(imgElement, 0, 0, imgElement.width, imgElement.height)
+  const color = context.getImageData(offsetX, offsetY, 1, 1).data
+  globalEvent().options = {
+    [uiStore.colorPickerOption!]: rgbToHex(color[0], color[1], color[2]),
+  }
+}
+
+const isPending = (issuenumber: string) =>
+  !!edgeCatalog().currentEdges[
+    `${mainStore.country}/${mainStore.magazine} ${issuenumber}`
+  ]
+const isPublished = (issuenumber: string) =>
+  !!(edgeCatalog().publishedEdges[
+    `${mainStore.country}/${mainStore.magazine}`
+  ] || {})[issuenumber]
+
+const rgbToHex = (r: number, g: number, b: number) =>
+  `#${((r << 16) | (g << 8) | b).toString(16)}`
 </script>
 <style lang="scss" scoped>
 #wrapper {

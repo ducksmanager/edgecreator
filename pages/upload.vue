@@ -67,7 +67,9 @@
             <template #header>
               <issue
                 :publicationcode="crop.publicationCode"
-                :publicationname="publicationNames[crop.publicationCode]"
+                :publicationname="
+                  coaStore.publicationNames[crop.publicationCode]
+                "
                 :issuenumber="crop.issueNumber"
             /></template>
             <img
@@ -115,140 +117,147 @@
   >
 </template>
 
-<script>
-import Vue from 'vue'
+<script lang="js">
+// middleware: 'authenticated',
+</script>
+<script lang="ts" setup>
+import { nextTick, set } from 'vue'
 import Issue from 'ducksmanager/assets/js/components/Issue.vue'
-import { mapState } from 'pinia'
 import { useI18n } from 'nuxt-i18n-composable'
+import { computed, ref } from '@nuxtjs/composition-api'
+import axios from 'axios'
 import EdgeCanvas from '@/components/EdgeCanvas'
 import IssueSelect from '@/components/IssueSelect'
-import saveEdgeMixin from '@/mixins/saveEdgeMixin'
 import { coa } from '~/stores/coa'
 import { useToast } from '~/composables/useToast'
 import saveEdge from '~/composables/saveEdge'
+import { useCookies } from '~/composables/useCookies'
 
 const i18n = useI18n()
+const coaStore = coa()
 
 const { saveEdgeSvg } = saveEdge()
 
-export default {
-  components: { Issue, IssueSelect, EdgeCanvas },
-  mixins: [saveEdgeMixin],
-  middleware: 'authenticated',
-  data: () => ({
-    currentCrop: null,
-    crops: [],
-    uploadedImageData: null,
-  }),
-  computed: {
-    ...mapState(coa, ['publicationNames']),
-    initialContributors() {
-      return { photographers: [{ username: this.$cookies.get('dm-user') }] }
-    },
-  },
-  methods: {
-    addCrop() {
-      const data = this.$refs.cropper.getData()
-      if (data.height < data.width) {
-        useToast().toast(
-          i18n.t(
-            `The width of your selection is bigger than its height! Make sure that the edges appear vertically on the photo.`
-          ),
-          {
-            title: i18n.t('Error'),
-            autoHideDelay: 5000,
-          }
+type Crop = {
+  data: any
+  url: string
+  sent: boolean
+  publicationCode: string
+  issueNumber: string
+}
+
+const currentCrop = ref(null)
+const crops = ref([] as Crop[])
+const uploadedImageData = ref(null as { url: string } | null)
+const cropper = ref(null as any | null)
+
+const initialContributors = computed(() => ({
+  photographers: [{ username: useCookies().get('dm-user') }],
+}))
+
+const addCrop = () => {
+  const data = cropper.value!.getData()
+  if (data.height < data.width) {
+    useToast().toast(
+      i18n
+        .t(
+          `The width of your selection is bigger than its height! Make sure that the edges appear vertically on the photo.`
         )
-      } else {
-        this.crops.push({
-          ...this.currentCrop,
-          data,
-          url: this.$refs.cropper.getCroppedCanvas().toDataURL('image/jpeg'),
-        })
-        this.currentCrop = null
+        .toString(),
+      {
+        title: i18n.t('Error').toString(),
+        autoHideDelay: 5000,
       }
-    },
-    async uploadAll() {
-      const vm = this
-      for (const crop of this.crops.filter(({ sent }) => !sent)) {
-        const [country, magazine] = crop.publicationCode.split('/')
-        const fileName = (
-          await this.$axios.$post('/fs/upload-base64', {
-            country,
-            magazine,
-            issuenumber: crop.issueNumber,
-            data: crop.url,
-          })
-        ).fileName
-        Vue.set(crop, 'filename', fileName)
-        this.$nextTick().then(() => {
-          saveEdgeSvg(
-            country,
-            magazine,
-            crop.issueNumber,
-            this.initialContributors
-          ).then((response) => {
-            const isSuccess =
-              response && response.paths && response.paths.svgPath
-            Vue.set(crop, 'sent', isSuccess)
-            Vue.set(crop, 'error', !isSuccess)
-          })
-        })
-      }
-      // window.location.replace('/')
-    },
-    read(files) {
-      return new Promise((resolve, reject) => {
-        if (!files || files.length === 0) {
-          resolve()
-          return
-        }
-        const file = files[0]
-        if (file.type === 'image/jpeg') {
-          if (URL) {
-            resolve({
-              loaded: true,
-              name: file.name,
-              type: file.type,
-              url: URL.createObjectURL(file),
-            })
-          } else {
-            reject(new Error(i18n.t('Your browser is not supported ')))
-          }
-        } else {
-          reject(new Error(i18n.t('Please choose a JPG or JPEG file')))
-        }
+    )
+  } else {
+    crops.value.push({
+      ...currentCrop.value,
+      data,
+      url: cropper.getCroppedCanvas().toDataURL('image/jpeg'),
+    })
+    currentCrop.value = null
+  }
+}
+const uploadAll = async () => {
+  for (const crop of crops.value.filter(({ sent }) => !sent)) {
+    const [country, magazine] = crop.publicationCode.split('/')
+    const fileName = (
+      await axios.post('/fs/upload-base64', {
+        country,
+        magazine,
+        issuenumber: crop.issueNumber,
+        data: crop.url,
       })
-    },
-    change({ target }) {
-      this.read(target.files)
-        .then((data) => {
-          target.value = ''
-          this.update(data)
+    ).data.fileName
+    set(crop, 'filename', fileName)
+    nextTick(async () => {
+      const response = await saveEdgeSvg(
+        country,
+        magazine,
+        crop.issueNumber,
+        initialContributors.value
+      )
+      const isSuccess = response && response.paths && response.paths.svgPath
+      set(crop, 'sent', isSuccess)
+      set(crop, 'error', !isSuccess)
+    })
+  }
+}
+
+const read = (files: FileList) =>
+  new Promise<{
+    loaded: boolean
+    name: string
+    type: string
+    url: string
+  } | void>((resolve, reject) => {
+    if (!files || files.length === 0) {
+      resolve()
+      return
+    }
+    const file = files[0]
+    if (file.type === 'image/jpeg') {
+      if (URL) {
+        resolve({
+          loaded: true,
+          name: file.name,
+          type: file.type,
+          url: URL.createObjectURL(file),
         })
-        .catch((e) => {
-          target.value = ''
-          this.alert(e)
-        })
-    },
-    dragover(e) {
-      e.preventDefault()
-    },
-    drop(e) {
-      e.preventDefault()
-      this.read(e.dataTransfer.files)
-        .then((data) => {
-          this.update(data)
-        })
-        .catch(this.alert)
-    },
-    alert(e) {
-      window.alert(e && e.message ? e.message : e)
-    },
-    update(data) {
-      this.uploadedImageData = data.url
-    },
-  },
+      } else {
+        reject(new Error(i18n.t('Your browser is not supported ').toString()))
+      }
+    } else {
+      reject(new Error(i18n.t('Please choose a JPG or JPEG file').toString()))
+    }
+  })
+const change = (e) => {
+  read(e.target.files)
+    .then((data) => {
+      e.target.value = ''
+      update(data)
+    })
+    .catch((e) => {
+      e.target.value = ''
+      alert(e)
+    })
+}
+const dragover = (e: DragEvent) => {
+  e.preventDefault()
+}
+const drop = (e: DragEvent) => {
+  e.preventDefault()
+  read(e.dataTransfer!.files)
+    .then((data) => {
+      update(data)
+    })
+    .catch(alert)
+}
+const alert = (e: DragEvent) => {
+  window.alert(e?.message || e)
+}
+const update = (data: Crop) => {
+  uploadedImageData.value = data.url
 }
 </script>
 
