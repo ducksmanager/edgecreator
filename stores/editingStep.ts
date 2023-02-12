@@ -2,25 +2,25 @@ import { defineStore } from 'pinia'
 
 export const editingStep = defineStore('editingStep', {
   state: () => ({
-    issuenumbers: [],
-    stepNumber: 0,
+    issuenumbers: [] as string[],
+    stepNumber: 0 as number,
   }),
 
   actions: {
-    addIssuenumber(issuenumber) {
+    addIssuenumber(issuenumber: string) {
       this.issuenumbers = [
         ...new Set(this.issuenumbers.concat(issuenumber)),
       ].sort()
     },
-    addIssuenumbers(issuenumbers) {
+    addIssuenumbers(issuenumbers: string[]) {
       this.issuenumbers = [
         ...new Set([...this.issuenumbers, ...issuenumbers]),
       ].sort()
     },
-    replaceIssuenumber(issuenumber) {
+    replaceIssuenumber(issuenumber: string) {
       this.issuenumbers = [issuenumber]
     },
-    toggleIssuenumber(issuenumber) {
+    toggleIssuenumber(issuenumber: string) {
       if (this.issuenumbers.includes(issuenumber)) {
         if (this.issuenumbers.length > 1) {
           this.issuenumbers.splice(this.issuenumbers.indexOf(issuenumber), 1)

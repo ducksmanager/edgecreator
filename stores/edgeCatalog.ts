@@ -7,8 +7,10 @@ const URL_PREFIX_STEPS = '/api/edgecreator/v2/model/'
 export const edgeCatalog = defineStore('edgeCatalog', {
   state: () => ({
     currentEdges: {},
-    publishedEdges: {},
-    publishedEdgesSteps: {},
+    publishedEdges: {} as {
+      [publicationcode: string]: { [issuenumber: string]: object }
+    },
+    publishedEdgesSteps: {} as { [publicationcode: string]: object },
   }),
 
   actions: {
@@ -33,7 +35,13 @@ export const edgeCatalog = defineStore('edgeCatalog', {
         })
       })
     },
-    addPublishedEdgesSteps({ publicationcode, publishedEdgesSteps }) {
+    addPublishedEdgesSteps({
+      publicationcode,
+      publishedEdgesSteps,
+    }: {
+      publicationcode: string
+      publishedEdgesSteps: { [publicationcode: string]: object }
+    }) {
       if (!this.publishedEdgesSteps[publicationcode]) {
         this.publishedEdgesSteps[publicationcode] = {}
       }
@@ -42,7 +50,13 @@ export const edgeCatalog = defineStore('edgeCatalog', {
         ...publishedEdgesSteps,
       }
     },
-    async getPublishedEdgesSteps({ publicationcode, edgeModelIds }) {
+    async getPublishedEdgesSteps({
+      publicationcode,
+      edgeModelIds,
+    }: {
+      publicationcode: string
+      edgeModelIds: number[]
+    }) {
       const newModelIds = [
         ...new Set(
           edgeModelIds.filter(
@@ -56,16 +70,13 @@ export const edgeCatalog = defineStore('edgeCatalog', {
         this.addPublishedEdgesSteps({
           publicationcode,
           publishedEdgesSteps: await main()
-            .getChunkedRequests(
-              {
-                api: this.$nuxt.$axios,
-                url: URL_PREFIX_STEPS,
-                parametersToChunk: newModelIds,
-                chunkSize: 10,
-                suffix: '/steps',
-              },
-              { root: true }
-            )
+            .getChunkedRequests({
+              api: this.$nuxt.$axios,
+              url: URL_PREFIX_STEPS,
+              parametersToChunk: newModelIds,
+              chunkSize: 10,
+              suffix: '/steps',
+            })
             .then((data) =>
               data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
             ),

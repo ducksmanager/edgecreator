@@ -125,8 +125,11 @@ import IssueSelect from '@/components/IssueSelect'
 import saveEdgeMixin from '@/mixins/saveEdgeMixin'
 import { coa } from '~/stores/coa'
 import { useToast } from '~/composables/useToast'
+import saveEdge from '~/composables/saveEdge'
 
 const i18n = useI18n()
+
+const { saveEdgeSvg } = saveEdge()
 
 export default {
   components: { Issue, IssueSelect, EdgeCanvas },
@@ -179,7 +182,7 @@ export default {
         ).fileName
         Vue.set(crop, 'filename', fileName)
         this.$nextTick().then(() => {
-          vm.saveEdgeSvg(
+          saveEdgeSvg(
             country,
             magazine,
             crop.issueNumber,

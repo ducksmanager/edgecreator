@@ -51,6 +51,11 @@ export const renders = defineStore('renders', {
         originalName: 'TexteMyFonts',
         description: 'Insert a text',
       },
-    ],
+    ] as {
+      component: string
+      labelL10nKey: string
+      originalName: string
+      description: string
+    }[],
   }),
 })

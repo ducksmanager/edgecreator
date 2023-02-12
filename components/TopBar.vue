@@ -61,13 +61,13 @@
             <b-row>
               <b-col cols="3">
                 <b-checkbox
-                  id="showEdgePhotos"
-                  v-model="showEdgePhotos"
-                  :disabled="!hasPhotoUrl || showEdgePhotos === null"
+                  id="uiStore.showEdgePhotos"
+                  v-model="uiStore.showEdgePhotos"
+                  :disabled="!hasPhotoUrl || uiStore.showEdgePhotos === null"
                 />
               </b-col>
               <b-col
-                ><label for="showEdgePhotos">{{
+                ><label for="uiStore.showEdgePhotos">{{
                   $t('Show edge photos')
                 }}</label></b-col
               >
@@ -95,7 +95,7 @@
     </b-row>
     <b-row align="center" class="pb-1">
       <b-col v-if="publicationName" align-self="center">
-        <Issue
+        <issue
           :publicationcode="`${country}/${magazine}`"
           :publicationname="publicationName"
           :issuenumber="issuenumbers[0]"
@@ -113,7 +113,7 @@
               ></template
             ></template
           >
-        </Issue>
+        </issue>
 
         <template v-if="isEditingMultiple">
           <b-icon-info-circle-fill
@@ -166,7 +166,7 @@
         >
           <b-icon-camera />
           <b-modal v-model="showPhotoModal" ok-only>
-            <Gallery
+            <gallery
               image-type="photos"
               :items="publicationPhotosForGallery"
               @change="addPhoto"
@@ -185,7 +185,7 @@
       style="border-bottom: 1px solid lightgray"
     >
       <b-col align-self="center">
-        <MultipleTargetOptions>
+        <multiple-target-options>
           <b-button
             v-b-tooltip.hover
             :title="$t('Change dimensions')"
@@ -241,7 +241,7 @@
               >{{ $t('Clone') }}
             </b-btn>
           </b-collapse>
-        </MultipleTargetOptions>
+        </multiple-target-options>
       </b-col>
     </b-row>
     <session-info />
@@ -265,10 +265,13 @@ import Dimensions from '@/components/Dimensions'
 import Gallery from '@/components/Gallery'
 import IssueSelect from '@/components/IssueSelect'
 import SaveModelButton from '@/components/SaveModelButton'
-import surroundingEdgeMixin from '@/mixins/surroundingEdgeMixin'
-import showEdgePhotosMixin from '@/mixins/showEdgePhotosMixin'
 import ConfirmEditMultipleValues from '@/components/ConfirmEditMultipleValues'
 import SessionInfo from '@/components/SessionInfo'
+import surroundingEdge from '~/composables/surroundingEdge'
+
+const uiStore = ui()
+
+const { showPreviousEdge, showNextEdge } = surroundingEdge()
 
 export default {
   name: 'TopBar',
@@ -287,7 +290,6 @@ export default {
     BIconHouse,
     BIconInfoCircleFill,
   },
-  mixins: [surroundingEdgeMixin, showEdgePhotosMixin],
   props: {
     dimensions: {
       type: Object,

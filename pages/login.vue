@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import redirectMixin from '@/mixins/redirectMixin'
+import useRedirect from '@/composables/redirect'
 import { useToast } from '~/composables/useToast'
 
 const crypto = require('crypto')
@@ -46,8 +46,9 @@ const roleMapping = {
   Admin: 'admin',
 }
 
+useRedirect()
+
 export default {
-  mixins: [redirectMixin],
   data() {
     return {
       loginUsername: null,

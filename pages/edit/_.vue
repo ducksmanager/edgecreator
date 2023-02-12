@@ -54,7 +54,7 @@
                 </div>
               </th>
               <th
-                v-if="showEdgePhotos && photoUrls[issuenumber]"
+                v-if="uiStore.showEdgePhotos && photoUrls[issuenumber]"
                 :key="`photo-icon-${issuenumber}`"
               >
                 <b-icon-camera />
@@ -87,7 +87,7 @@
                 />
               </td>
               <td
-                v-if="showEdgePhotos && photoUrls[issuenumber]"
+                v-if="uiStore.showEdgePhotos && photoUrls[issuenumber]"
                 :key="`photo-${issuenumber}`"
               >
                 <img
@@ -99,8 +99,8 @@
                   }"
                   crossorigin
                   @click="setColorFromPhoto"
-                  @load="showEdgePhotos = true"
-                  @error="showEdgePhotos = null"
+                  @load="uiStore.showEdgePhotos = true"
+                  @error="uiStore.showEdgePhotos = null"
                 />
               </td>
             </template>
@@ -142,11 +142,16 @@ import TopBar from '@/components/TopBar'
 import EdgeCanvas from '@/components/EdgeCanvas'
 import PublishedEdge from '@/components/PublishedEdge'
 import ModelEdit from '@/components/ModelEdit'
-import svgUtilsMixin from '@/mixins/svgUtilsMixin'
-import modelLoadMixin from '@/mixins/modelLoadMixin'
-import surroundingEdgeMixin from '@/mixins/surroundingEdgeMixin'
-import showEdgePhotosMixin from '@/mixins/showEdgePhotosMixin'
 import PositionHelper from '@/components/PositionHelper'
+import dimensions from '~/composables/dimensions'
+import surroundingEdge from '~/composables/surroundingEdge'
+import stepList from '~/composables/stepList'
+
+const uiStore = ui()
+const { showPreviousEdge, showNextEdge } = surroundingEdge()
+const { addStep, removeStep, duplicateStep, swapSteps } = stepList()
+
+const { setDimensions } = dimensions()
 
 export default {
   name: 'Edit',
@@ -159,12 +164,6 @@ export default {
     BIconPencil,
     BIconCamera,
   },
-  mixins: [
-    svgUtilsMixin,
-    modelLoadMixin,
-    surroundingEdgeMixin,
-    showEdgePhotosMixin,
-  ],
   middleware: ['authenticated', 'is-editor'],
   data() {
     return {
@@ -172,7 +171,7 @@ export default {
     }
   },
   async fetch() {
-    await this.fetchAllUsers()
+    await user().fetchAllUsers()
   },
   computed: {
     editingDimensions() {
@@ -295,10 +294,13 @@ export default {
           await vm.loadModel(country, magazine, issuenumber, issuenumber)
         } catch {
           if (vm.issuenumbers[idx - 1]) {
-            vm.copyDimensionsAndSteps(issuenumber, vm.issuenumbers[idx - 1])
+            stepList().copyDimensionsAndSteps(
+              issuenumber,
+              vm.issuenumbers[idx - 1]
+            )
           } else {
-            vm.setDimensions({ width: 15, height: 200 }, issuenumber)
-            vm.setSteps(issuenumber, [])
+            dimensions().setDimensions({ width: 15, height: 200 }, issuenumber)
+            stepList().setSteps(issuenumber, [])
           }
         }
       }
@@ -322,7 +324,7 @@ export default {
     },
     overwriteDimensions({ width, height }) {
       for (const targetIssuenumber of this.editingIssuenumbers) {
-        this.setDimensions(
+        dimensions().setDimensions(
           {
             width,
             height,
@@ -376,7 +378,6 @@ export default {
       'loadSurroundingEdges',
       'loadItems',
     ]),
-    ...mapActions(user, ['fetchAllUsers']),
   },
 }
 </script>

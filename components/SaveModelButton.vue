@@ -119,6 +119,9 @@ import { ui } from '~/stores/ui'
 import { main } from '~/stores/main'
 import { user } from '~/stores/user'
 import saveEdgeMixin from '@/mixins/saveEdgeMixin'
+import saveEdge from '~/composables/saveEdge'
+
+const { saveEdgeSvg } = saveEdge()
 
 const i18n = useI18n()
 
@@ -183,7 +186,7 @@ export default {
 
       this.zoom = 1.5
       this.$nextTick(() => {
-        vm.saveEdgeSvg(
+        saveEdgeSvg(
           vm.country,
           vm.magazine,
           currentIssueNumber,

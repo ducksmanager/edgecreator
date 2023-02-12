@@ -28,6 +28,9 @@
 
 <script>
 import stepOptionsMixin from '~/composables/stepOptionsMixin'
+import textTemplate from '~/composables/textTemplate'
+
+const { resolveStringTemplates } = textTemplate()
 
 export default {
   mixins: [stepOptionsMixin],
@@ -66,13 +69,13 @@ export default {
     if (this.options.yDistanceFromCenter === undefined) {
       this.$root.$emit('set-options', {
         yDistanceFromCenter:
-          parseInt(this.resolveStringTemplates(this.options.y2)) -
+          parseInt(resolveStringTemplates(this.options.y2)) -
           this.dimensions.height / 2,
       })
     }
     if (typeof this.options.height === 'string') {
       this.$root.$emit('set-options', {
-        height: parseInt(this.resolveStringTemplates(this.options.height)),
+        height: parseInt(resolveStringTemplates(this.options.height)),
       })
     }
     this.enableDragResize(this.$refs.rect1, { onmove })

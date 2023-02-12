@@ -3,11 +3,19 @@ import { edgeCatalog } from '~/stores/edgeCatalog'
 import { main } from '~/stores/main'
 import { user } from '~/stores/user'
 import { renders } from '~/stores/renders'
+import useDimensions from '~/composables/dimensions'
+import svgUtils from '~/composables/svgUtils'
+import stepList from '~/composables/stepList'
+import legacyDbMixin from '~/composables/legacyDb'
 
 const mainStore = main()
 const rendersStore = renders()
 const userStore = user()
 const edgeCatalogStore = edgeCatalog()
+
+const { getSvgMetadata, loadSvgFromString } = svgUtils()
+
+const { getOptionsFromDb } = legacyDbMixin()
 
 export default () => {
   const getDimensionsFromSvg = (svgElement: HTMLElement) => ({
@@ -27,7 +35,7 @@ export default () => {
 
   const setPhotoUrlsFromSvg = (
     issuenumber: string,
-    svgChildNodes: HTMLElement[]
+    svgChildNodes: SVGElement[]
   ) => {
     for (const photoUrl of getSvgMetadata(svgChildNodes, 'photo')) {
       mainStore.setPhotoUrl({ issuenumber, filename: photoUrl })
@@ -36,7 +44,7 @@ export default () => {
 
   const setContributorsFromSvg = (
     issuenumber: string,
-    svgChildNodes: HTMLElement[]
+    svgChildNodes: SVGElement[]
   ) => {
     for (const contributionType of ['photographer', 'designer']) {
       for (const username of getSvgMetadata(
@@ -55,7 +63,7 @@ export default () => {
   const getDimensionsFromApi = (
     stepData: object,
     defaultDimensions = { width: 15, height: 200 }
-  ) => {
+  ): { width: number; height: number } => {
     const dimensions = Object.values(stepData).find(
       ({ stepNumber: originalStepNumber }) => originalStepNumber === -1
     )
@@ -68,11 +76,18 @@ export default () => {
     return defaultDimensions
   }
   const getStepsFromApi = async (
+    publicationcode: string,
     issuenumber: string,
-    stepData,
-    dimensions,
-    calculateBase64,
-    onError
+    stepData: {
+      [optionName: string]: {
+        stepNumber: number
+        functionName: string
+        options: any
+      }
+    },
+    dimensions: { width: number; height: number },
+    calculateBase64: boolean,
+    onError: (error: string, stepNumber: number) => void
   ) =>
     (
       await Promise.all(
@@ -94,10 +109,11 @@ export default () => {
                   return {
                     component,
                     options: await getOptionsFromDb(
-                      component,
-                      originalOptions,
-                      dimensions,
+                      publicationcode,
                       issuenumber,
+                      stepNumber,
+                      { component, options: originalOptions },
+                      dimensions,
                       calculateBase64
                     ),
                   }
@@ -137,14 +153,14 @@ export default () => {
   }
 
   const loadModel = async (
-    country,
-    magazine,
-    issuenumber,
-    targetIssuenumber
+    country: string,
+    magazine: string,
+    issuenumber: string,
+    targetIssuenumber: string
   ) => {
     const onlyLoadStepsAndDimensions = issuenumber !== targetIssuenumber
     let steps
-    let dimensions
+    let dimensions: { width: number; height: number }
 
     const loadSvg = async (publishedVersion: boolean) => {
       const { svgElement, svgChildNodes } = await loadSvgFromString(
@@ -183,11 +199,12 @@ export default () => {
             edgeCatalog().publishedEdgesSteps[publicationcode][issuenumber]
           dimensions = getDimensionsFromApi(apiSteps)
           steps = await getStepsFromApi(
+            publicationcode,
             issuenumber,
             apiSteps,
             dimensions,
             true,
-            (error) => {
+            (error: string) => {
               mainStore.addWarning(error)
             }
           )
@@ -202,8 +219,8 @@ export default () => {
       }
     }
     if (steps) {
-      setDimensions(dimensions, targetIssuenumber)
-      setSteps(targetIssuenumber, steps)
+      useDimensions().setDimensions(dimensions!, targetIssuenumber)
+      stepList().setSteps(targetIssuenumber, steps)
     } else {
       throw new Error('No model found for issue ' + issuenumber)
     }

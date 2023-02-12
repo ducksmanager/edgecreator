@@ -1,5 +1,7 @@
 import { set } from 'vue'
 import { defineStore } from 'pinia'
+import axios from 'axios'
+import { NuxtAxiosInstance } from '@nuxtjs/axios'
 import { coa } from './coa'
 
 const numericSortCollator = new Intl.Collator(undefined, {
@@ -8,12 +10,14 @@ const numericSortCollator = new Intl.Collator(undefined, {
 })
 export const main = defineStore('main', {
   state: () => ({
-    country: null,
-    magazine: null,
-    issuenumbers: [],
-    isRange: false,
+    country: null as string | null,
+    magazine: null as string | null,
+    issuenumbers: [] as string[],
+    isRange: false as boolean,
     photoUrls: {},
-    contributors: {},
+    contributors: {} as {
+      [issuenumber: string]: { [contributionType: string]: [] }
+    },
 
     edgesBefore: [],
     edgesAfter: [],
@@ -21,15 +25,16 @@ export const main = defineStore('main', {
     publicationElements: [],
     publicationPhotos: [],
 
-    warnings: [],
+    warnings: [] as string[],
   }),
 
   getters: {
-    publicationcode: ({ country, magazine }) => `${country}/${magazine}`,
+    publicationcode: ({ country, magazine }): string =>
+      `${country}/${magazine}`,
 
-    publicationIssues: ({ publicationcode }) =>
-      coa().issueNumbers[publicationcode] || [],
-
+    publicationIssues() {
+      return coa().issueNumbers[this.publicationcode] || []
+    },
     publicationElementsForGallery: ({ country, publicationElements }) =>
       publicationElements &&
       publicationElements.map((elementFileName) => ({
@@ -46,10 +51,24 @@ export const main = defineStore('main', {
   },
 
   actions: {
-    setPhotoUrl({ issuenumber, filename }) {
+    setPhotoUrl({
+      issuenumber,
+      filename,
+    }: {
+      issuenumber: string
+      filename: string
+    }) {
       set(this.photoUrls, issuenumber, filename)
     },
-    addContributor({ issuenumber, contributionType, user }) {
+    addContributor({
+      issuenumber,
+      contributionType,
+      user,
+    }: {
+      issuenumber: string
+      contributionType: string
+      user: string
+    }) {
       const contributors = this.contributors[issuenumber] || {
         designers: [],
         photographers: [],
@@ -61,7 +80,13 @@ export const main = defineStore('main', {
         ],
       })
     },
-    removeContributor({ contributionType, userToRemove }) {
+    removeContributor({
+      contributionType,
+      userToRemove,
+    }: {
+      contributionType: string
+      userToRemove: string
+    }) {
       Object.keys(this.contributors).forEach((issuenumber) => {
         const issueContributors = this.contributors[issuenumber]
         const index = issueContributors[contributionType].findIndex((user) => {
@@ -71,14 +96,22 @@ export const main = defineStore('main', {
         set(this.contributors, issuenumber, issueContributors)
       })
     },
-    addWarning(warning) {
+    addWarning(warning: string) {
       this.warnings = [...this.warnings, warning]
     },
-    removeWarning(idx) {
+    removeWarning(idx: number) {
       this.warnings.splice(idx, 1)
     },
 
-    setIssuenumbers({ min, max, others }) {
+    setIssuenumbers({
+      min,
+      max,
+      others,
+    }: {
+      min: string
+      max: string
+      others: string | null
+    }) {
       const firstIssueIndex = this.publicationIssues.findIndex(
         (issue) => issue === min
       )
@@ -104,11 +137,9 @@ export const main = defineStore('main', {
         )
       }
     },
-    async loadItems({ itemType }) {
+    async loadItems({ itemType }: { itemType: string }) {
       const items = (
-        await this.$nuxt.$axios.$get(
-          `/fs/browse/${itemType}/${this.publicationcode}`
-        )
+        await axios.get(`/fs/browse/${itemType}/${this.publicationcode}`)
       ).sort(numericSortCollator.compare)
       if (itemType === 'elements') {
         this.publicationElements = items
@@ -139,9 +170,9 @@ export const main = defineStore('main', {
           index <= lastIssueIndex + 10
       )
 
-      const getEdgePublicationStates = async (edges) =>
-        this.$nuxt.$axios
-          .$get(`/api/edges/${this.publicationcode}/${edges.join(',')}`)
+      const getEdgePublicationStates = async (edges: string[]) =>
+        axios
+          .get(`/api/edges/${this.publicationcode}/${edges.join(',')}`)
           .then((data) =>
             data.sort(
               ({ issuenumber: issuenumber1 }, { issuenumber: issuenumber2 }) =>
@@ -166,6 +197,12 @@ export const main = defineStore('main', {
       parametersToChunk,
       chunkSize,
       suffix = '',
+    }: {
+      api: NuxtAxiosInstance
+      url: string
+      parametersToChunk: (string | number)[]
+      chunkSize: number
+      suffix?: string
     }) =>
       await Promise.all(
         await Array.from(

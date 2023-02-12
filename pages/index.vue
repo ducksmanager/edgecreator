@@ -13,7 +13,7 @@
       <b-container v-if="isUploadableEdgesCarouselReady" align="center">
         <b-alert show variant="info">
           <template v-if="mostPopularIssuesInCollectionWithoutEdge.length">
-            <UploadableEdgesCarousel
+            <uploadable-edges-carousel
               :user-points="userPhotographerPoints"
               :issues="mostPopularIssuesInCollectionWithoutEdge"
               :publication-names="publicationNames"
@@ -26,7 +26,7 @@
                   )
                 }}
               </template>
-            </UploadableEdgesCarousel>
+            </uploadable-edges-carousel>
             <div>
               <div class="position-absolute px-2 separation-text">
                 {{ $t('or') }}
@@ -34,7 +34,7 @@
               <hr />
             </div>
           </template>
-          <UploadableEdgesCarousel
+          <uploadable-edges-carousel
             :user-points="userPhotographerPoints"
             :issues="mostWantedEdges"
             :publication-names="publicationNames"
@@ -47,7 +47,7 @@
                 )
               }}
             </template>
-          </UploadableEdgesCarousel>
+          </uploadable-edges-carousel>
           <b-button to="/upload" class="mt-1">{{
             $t('Send edge photos')
           }}</b-button>
@@ -82,7 +82,7 @@
                   variant="outline-secondary"
                   >Tout éditer ({{ edges.length }})</b-btn
                 ></b-link
-              ><Publication
+              ><publication
                 :publicationname="publicationNames[publicationcode]"
                 :publicationcode="publicationcode"
             /></b-row>
@@ -116,7 +116,7 @@
                               )
                             : getPhotoUrl(edge.country, edge.photo)
                         "
-                      /><EdgeLink
+                      /><edge-link
                         :publicationcode="`${edge.country}/${edge.magazine}`"
                         :issuenumber="edge.issuenumber"
                         :designers="edge.designers"
@@ -156,12 +156,20 @@
 import UploadableEdgesCarousel from 'ducksmanager/assets/js/components/UploadableEdgesCarousel.vue'
 import Publication from 'ducksmanager/assets/js/components/Publication.vue'
 import { mapActions, mapState } from 'pinia'
-import edgeCatalogMixin from '@/mixins/edgeCatalogMixin'
+import { computed } from '@nuxtjs/composition-api'
+import edgeCatalog from '~/composables/edgeCatalog'
 import EdgeLink from '@/components/EdgeLink'
-import redirectMixin from '@/mixins/redirectMixin'
 import SessionInfo from '@/components/SessionInfo'
 import { collection } from '~/stores/collection'
 import { user } from '~/stores/user'
+import svgUtils from '~/composables/svgUtils'
+import { edgeCatalog as edgeCatalogStore } from '~/stores/edgeCatalog'
+import { coa } from '~/stores/coa'
+
+const { getEdgeUrl } = svgUtils()
+const publicationNames = computed(() => coa().publicationNames)
+
+const { edgesByStatus, canEditEdge, loadCatalog } = edgeCatalog()
 
 export default {
   components: {
@@ -170,7 +178,7 @@ export default {
     UploadableEdgesCarousel,
     Publication,
   },
-  mixins: [edgeCatalogMixin, redirectMixin],
+  mixins: [edgeCatalogMixin],
   middleware: 'authenticated',
 
   data: () => ({
@@ -205,14 +213,14 @@ export default {
     await this.loadPopularIssuesInCollection()
     await this.loadBookcase()
     await this.loadMostWantedEdges()
-    await this.loadCatalog(true)
-    await this.fetchPublicationNames([
+    await loadCatalog(true)
+    await coa().fetchPublicationNames([
       ...new Set([
         ...this.bookcase.map(
           ({ countryCode, magazineCode }) => `${countryCode}/${magazineCode}`
         ),
         ...this.mostWantedEdges.map(({ publicationCode }) => publicationCode),
-        ...Object.values(this.currentEdges).map(
+        ...Object.values(edgeCatalogStore().currentEdges).map(
           ({ country, magazine }) => `${country}/${magazine}`
         ),
       ]),

@@ -14,24 +14,26 @@ const URL_ISSUE_COUNTS = '/api/coa/list/issues/count'
 
 export const coa = defineStore('coa', {
   state: () => ({
-    countryNames: null,
-    publicationNames: {},
-    publicationNamesFullCountries: [],
-    personNames: null,
-    issueNumbers: {},
-    issueDetails: {},
-    isLoadingCountryNames: false,
+    countryNames: null as { [countrycode: string]: string } | null,
+    publicationNames: {} as { [publicationcode: string]: string },
+    publicationNamesFullCountries: [] as string[],
+    personNames: null as { [personcode: string]: string } | null,
+    issueNumbers: {} as { [publicationcode: string]: string[] },
+    issueDetails: {} as { [issuecode: string]: any },
+    isLoadingCountryNames: false as boolean,
     issueCounts: null,
   }),
 
   actions: {
-    addPublicationNames(publicationNames) {
+    addPublicationNames(publicationNames: {
+      [publicationcode: string]: string
+    }) {
       this.publicationNames = {
         ...this.publicationNames,
         ...publicationNames,
       }
     },
-    setPersonNames(personNames) {
+    setPersonNames(personNames: { [personcode: string]: string }) {
       this.personNames = Object.keys(personNames).reduce(
         (acc, personCode) => ({
           ...acc,
@@ -40,25 +42,25 @@ export const coa = defineStore('coa', {
         {}
       )
     },
-    addIssueNumbers(issueNumbers) {
+    addIssueNumbers(issueNumbers: { [publicationcode: string]: string[] }) {
       this.issueNumbers = { ...this.issueNumbers, ...issueNumbers }
     },
 
-    async fetchCountryNames(locale) {
+    async fetchCountryNames(locale: string) {
       if (!this.isLoadingCountryNames && !this.countryNames) {
         this.isLoadingCountryNames = true
         this.countryNames = (
           await coaApi.get(
             URL_PREFIX_COUNTRIES.replace(
               'LOCALE',
-              locale || localStorage.getItem('locale')
+              locale || localStorage.getItem('locale')!
             )
           )
         ).data
         this.isLoadingCountryNames = false
       }
     },
-    async fetchPublicationNames(publicationCodes) {
+    async fetchPublicationNames(publicationCodes: string[]) {
       const newPublicationCodes = [
         ...new Set(
           publicationCodes.filter(
@@ -71,22 +73,19 @@ export const coa = defineStore('coa', {
         newPublicationCodes.length &&
         this.addPublicationNames(
           await main()
-            .getChunkedRequests(
-              {
-                api: coaApi,
-                url: URL_PREFIX_PUBLICATIONS,
-                parametersToChunk: newPublicationCodes,
-                chunkSize: 10,
-              },
-              { root: true }
-            )
+            .getChunkedRequests({
+              api: coaApi,
+              url: URL_PREFIX_PUBLICATIONS,
+              parametersToChunk: newPublicationCodes,
+              chunkSize: 10,
+            })
             .then((data) =>
               data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
             )
         )
       )
     },
-    async fetchPublicationNamesFromCountry(countryCode) {
+    async fetchPublicationNamesFromCountry(countryCode: string) {
       if (this.publicationNamesFullCountries.includes(countryCode)) {
         return
       }
@@ -103,7 +102,7 @@ export const coa = defineStore('coa', {
           ]
         })
     },
-    async fetchPersonNames(personCodes) {
+    async fetchPersonNames(personCodes: string[]) {
       const newPersonNames = [
         ...new Set(
           personCodes.filter(
@@ -117,15 +116,12 @@ export const coa = defineStore('coa', {
         this.setPersonNames({
           ...(this.personNames || {}),
           ...(await main()
-            .getChunkedRequests(
-              {
-                api: coaApi,
-                url: URL_PREFIX_AUTHORS,
-                parametersToChunk: newPersonNames,
-                chunkSize: 10,
-              },
-              { root: true }
-            )
+            .getChunkedRequests({
+              api: coaApi,
+              url: URL_PREFIX_AUTHORS,
+              parametersToChunk: newPersonNames,
+              chunkSize: 10,
+            })
             .then((data) =>
               data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
             )),
@@ -133,7 +129,7 @@ export const coa = defineStore('coa', {
       )
     },
 
-    async fetchIssueNumbers(publicationCodes) {
+    async fetchIssueNumbers(publicationCodes: string[]) {
       const newPublicationCodes = [
         ...new Set(
           publicationCodes.filter(
@@ -146,15 +142,12 @@ export const coa = defineStore('coa', {
         newPublicationCodes.length &&
         this.addIssueNumbers(
           await main()
-            .getChunkedRequests(
-              {
-                api: coaApi,
-                url: URL_PREFIX_ISSUES,
-                parametersToChunk: newPublicationCodes,
-                chunkSize: 1,
-              },
-              { root: true }
-            )
+            .getChunkedRequests({
+              api: coaApi,
+              url: URL_PREFIX_ISSUES,
+              parametersToChunk: newPublicationCodes,
+              chunkSize: 1,
+            })
             .then((data) =>
               data.reduce(
                 (acc, result) => ({
@@ -177,7 +170,13 @@ export const coa = defineStore('coa', {
       }
     },
 
-    async fetchIssueUrls({ publicationCode, issueNumber }) {
+    async fetchIssueUrls({
+      publicationCode,
+      issueNumber,
+    }: {
+      publicationCode: string
+      issueNumber: string
+    }) {
       const issueCode = `${publicationCode} ${issueNumber}`
       if (!this.issueDetails[issueCode]) {
         set(this.issueDetails, issueCode, {

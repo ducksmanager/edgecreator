@@ -93,6 +93,7 @@ const populateItems = async (
             issueStepWarnings[-1] = ['No dimensions']
           }
           const issueSteps = await getStepsFromApi(
+            props.publicationcode,
             issuenumber,
             allSteps,
             dimensions,

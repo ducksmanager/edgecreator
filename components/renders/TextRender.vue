@@ -22,6 +22,9 @@
 <script>
 import stepOptionsMixin from '~/composables/stepOptionsMixin'
 import { loadImage } from '~/composables/base64'
+import textTemplate from '~/composables/textTemplate'
+
+const { resolveStringTemplates } = textTemplate()
 
 export default {
   mixins: [stepOptionsMixin],
@@ -54,7 +57,7 @@ export default {
 
   computed: {
     effectiveText() {
-      return this.resolveStringTemplates(this.options.text)
+      return resolveStringTemplates(this.options.text)
     },
   },
 

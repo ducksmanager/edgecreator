@@ -69,12 +69,14 @@
 import { mapActions, mapState } from 'pinia'
 import { useI18n } from 'nuxt-i18n-composable'
 import Dimensions from '@/components/Dimensions'
-import edgeCatalogMixin from '@/mixins/edgeCatalogMixin'
+import edgeCatalog from '~/composables/edgeCatalog'
 import EdgeGallery from '@/components/EdgeGallery'
 import { coa } from '~/stores/coa'
-import { edgeCatalog } from '~/stores/edgeCatalog'
+import { edgeCatalog as edgeCatalogStore } from '~/stores/edgeCatalog'
 
 const i18n = useI18n()
+
+const { getEdgeStatus, loadCatalog } = edgeCatalog()
 
 export default {
   components: { EdgeGallery, Dimensions },
@@ -100,7 +102,7 @@ export default {
   }),
   computed: {
     ...mapState(coa, ['countryNames', 'publicationNames', 'issueNumbers']),
-    ...mapState(edgeCatalog, ['publishedEdges']),
+    ...mapState(edgeCatalogStore, ['publishedEdges']),
 
     countriesWithSelect() {
       return (
@@ -141,7 +143,7 @@ export default {
         this.publishedEdges[this.currentPublicationCode] && [
           { value: null, text: i18n.t('Select an issue number') },
           ...this.issueNumbers[vm.currentPublicationCode].map((issuenumber) => {
-            const status = this.getEdgeStatus({
+            const status = getEdgeStatus({
               country: this.currentCountryCode,
               magazine: this.currentPublicationCode.split('/')[1],
               issuenumber,
@@ -191,7 +193,7 @@ export default {
       this.currentCountryCode = this.countryCode
     }
     await this.fetchCountryNames(this.$i18n.locale)
-    await this.loadCatalog(false)
+    await loadCatalog(false)
   },
   methods: {
     ...mapActions(coa, [
@@ -199,7 +201,7 @@ export default {
       'fetchPublicationNamesFromCountry',
       'fetchIssueNumbers',
     ]),
-    ...mapActions(edgeCatalog, ['addPublishedEdges']),
+    ...mapActions(edgeCatalogStore, ['addPublishedEdges']),
 
     async loadEdges() {
       let issueNumbersFilter = ''

@@ -1,9 +1,18 @@
 import { defineStore } from 'pinia'
+import axios from 'axios'
 import { user } from './user'
+
+type SimpleIssue = {
+  countryCode: string
+  magazineCode: string
+  issueNumber: string
+}
+
+type SimpleIssueWithPopularity = SimpleIssue & { popularity: number | null }
 
 export const collection = defineStore('collectionEC', {
   state: () => ({
-    bookcase: null,
+    bookcase: null as SimpleIssue[] | null,
     popularIssuesInCollection: null,
   }),
 
@@ -14,10 +23,9 @@ export const collection = defineStore('collectionEC', {
       bookcase,
       isSharedBookcase,
       popularIssuesInCollection,
-    }) =>
+    }): SimpleIssueWithPopularity[] | undefined | null =>
       (isSharedBookcase ? true : popularIssuesInCollection) &&
-      bookcase &&
-      bookcase.map((issue) => {
+      bookcase?.map((issue) => {
         const publicationCode = `${issue.countryCode}/${issue.magazineCode}`
         const issueCode = `${publicationCode} ${issue.issueNumber}`
         return {
@@ -26,7 +34,7 @@ export const collection = defineStore('collectionEC', {
           issueCode,
           popularity: isSharedBookcase
             ? null
-            : popularIssuesInCollection[issueCode] || 0,
+            : popularIssuesInCollection![issueCode] || 0,
         }
       }),
 
@@ -42,16 +50,22 @@ export const collection = defineStore('collectionEC', {
 
   actions: {
     async loadBookcase() {
-      this.bookcase = (
-        await this.$nuxt.$axios.get(`/api/bookcase/${user().username}`)
-      ).data
+      this.bookcase = (await axios.get(`/api/bookcase/${user().username}`)).data
     },
     async loadPopularIssuesInCollection() {
       if (!this.popularIssuesInCollection) {
         this.popularIssuesInCollection = (
-          await this.$nuxt.$axios.get('/api/collection/popular')
+          await axios.get('/api/collection/popular')
         ).data.reduce(
-          (acc, issue) => ({
+          (
+            acc: { [issuecode: string]: number },
+            issue: {
+              country: string
+              magazine: string
+              issueNumber: string
+              popularity: number
+            }
+          ) => ({
             ...acc,
             [`${issue.country}/${issue.magazine} ${issue.issueNumber}`]:
               issue.popularity,

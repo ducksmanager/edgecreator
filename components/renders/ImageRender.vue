@@ -18,6 +18,9 @@ import { mapState } from 'pinia'
 import { main } from '~/stores/main'
 import stepOptionsMixin from '~/composables/stepOptionsMixin'
 import { loadImage } from '~/composables/base64'
+import textTemplate from '~/composables/textTemplate'
+
+const { resolveStringTemplates } = textTemplate()
 
 export default {
   mixins: [stepOptionsMixin],
@@ -42,7 +45,7 @@ export default {
   computed: {
     ...mapState(main, ['country']),
     effectiveSource() {
-      return this.resolveStringTemplates(this.options.src)
+      return resolveStringTemplates(this.options.src)
     },
   },
 
