@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from '@nuxtjs/composition-api'
+import { onMounted, ref } from '@nuxtjs/composition-api'
 import { useStepOptions } from '~/composables/stepOptions'
 import type { baseProps } from '~/composables/stepOptions'
 import { globalEvent } from '~/stores/globalEvent'
@@ -42,11 +42,10 @@ const props = withDefaults(
 
 const ellipse = ref(null as HTMLElement | null)
 
-const stepOptions = useStepOptions(props)
-const attributes = computed(() => stepOptions.attributes)
+const { attributes, enableDragResize } = useStepOptions(props)
 
 onMounted(() => {
-  stepOptions.enableDragResize(ellipse.value!, {
+  enableDragResize(ellipse.value!, {
     onmove: ({ dx, dy }) => {
       globalEvent().options = {
         cx: props.options.cx + dx / uiStore.zoom,

@@ -24,41 +24,47 @@
   </g>
 </template>
 
-<script>
-import stepOptionsMixin from '~/composables/stepOptionsMixin'
+<script setup lang="ts">
+import { computed, onMounted, ref } from '@nuxtjs/composition-api'
+import { baseProps, useStepOptions } from '~/composables/stepOptions'
 
-export default {
-  mixins: [stepOptionsMixin],
+const rect = ref(null as SVGRectElement | null)
 
-  props: {
-    options: {
-      type: Object,
-      default: () => ({
-        x: 3,
-        y: 3,
-        width: 10,
-        height: 80,
-        colorStart: '#D01721',
-        colorEnd: '#0000FF',
-        direction: 'Vertical',
-      }),
-    },
-  },
+const props = withDefaults(
+  defineProps<
+    baseProps & {
+      options?: {
+        x: number
+        y: number
+        width: number
+        height: number
+        colorStart: string
+        colorEnd: string
+        direction: string
+      }
+    }
+  >(),
+  {
+    options: () => ({
+      x: 3,
+      y: 3,
+      width: 10,
+      height: 80,
+      colorStart: '#D01721',
+      colorEnd: '#0000FF',
+      direction: 'Vertical',
+    }),
+    attributeKeys: () => ['x', 'y', 'width', 'height'],
+  }
+)
 
-  data: () => ({
-    attributeKeys: ['x', 'y', 'width', 'height'],
-  }),
+const gradientId = computed(() => btoa(JSON.stringify(props.options)))
 
-  computed: {
-    gradientId() {
-      return btoa(JSON.stringify(this.options))
-    },
-  },
+const { enableDragResize, attributes } = useStepOptions(props)
 
-  mounted() {
-    this.enableDragResize(this.$refs.rect)
-  },
-}
+onMounted(() => {
+  enableDragResize(rect.value!)
+})
 </script>
 
 <style scoped></style>

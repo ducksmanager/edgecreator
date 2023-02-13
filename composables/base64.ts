@@ -1,6 +1,7 @@
 import { ref } from '@nuxtjs/composition-api'
+import { useStepOptions } from '~/composables/stepOptions'
 
-export const loadImage = (src: string) => {
+export const base64 = () => {
   const image = ref(
     null as {
       base64: string | null
@@ -8,26 +9,28 @@ export const loadImage = (src: string) => {
       height: number | null
     } | null
   )
-  const img = new Image()
-  img.crossOrigin = 'Anonymous'
-  img.onload = function () {
-    const canvas: HTMLCanvasElement = document.createElement('canvas')
-    const ctx: CanvasRenderingContext2D | null = canvas.getContext('2d')
-    canvas.height = this.naturalHeight
-    canvas.width = this.naturalWidth
-    ctx!.drawImage(this, 0, 0)
-    image.value = {
-      base64: canvas.toDataURL('png'),
-      width: this.naturalWidth,
-      height: this.naturalHeight,
+  const loadImage = (src: string) => {
+    const img = new Image()
+    img.crossOrigin = 'Anonymous'
+    img.onload = () => {
+      const canvas: HTMLCanvasElement = document.createElement('canvas')
+      const ctx: CanvasRenderingContext2D | null = canvas.getContext('2d')
+      canvas.height = img.naturalHeight
+      canvas.width = img.naturalWidth
+      ctx!.drawImage(img, 0, 0)
+      image.value = {
+        base64: canvas.toDataURL('png'),
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      }
+      useStepOptions().enableDragResize(img)
     }
-    enableDragResize(this)
+    img.onerror = (e) => {
+      console.error(`Base64 image could not be retrieved : ${src} : ${e}`)
+      image.value = { base64: null, width: null, height: null }
+    }
+    img.src = src
   }
-  img.onerror = (e) => {
-    console.error(`Base64 image could not be retrieved : ${src} : ${e}`)
-    image.value = { base64: null, width: null, height: null }
-  }
-  img.src = src
 
-  return { image }
+  return { image, loadImage }
 }

@@ -12,59 +12,64 @@
   </svg>
 </template>
 
-<script>
-import { mapState } from 'pinia'
-
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
-import stepOptionsMixin from '~/composables/stepOptionsMixin'
 import { loadImage } from '~/composables/base64'
 import textTemplate from '~/composables/textTemplate'
+import { baseProps, useStepOptions } from '~/composables/stepOptions'
 
 const { resolveStringTemplates } = textTemplate()
 
-export default {
-  mixins: [stepOptionsMixin],
+const image = ref(null)
 
-  props: {
-    options: {
-      type: Object,
-      default: () => ({
-        x: 5,
-        y: 5,
-        width: 15,
-        height: 15,
-        src: null,
-      }),
-    },
-  },
+const props = withDefaults(
+  defineProps<
+    baseProps & {
+      options?: {
+        x: number
+        y: number
+        width: number
+        height: number
+        src: string | null
+      }
+    }
+  >(),
+  {
+    options: () => ({
+      x: 5,
+      y: 5,
+      width: 15,
+      height: 15,
+      src: null,
+    }),
+    attributeKeys: () => ['x', 'y', 'width', 'height'],
+  }
+)
 
-  data: () => ({
-    attributeKeys: ['x', 'y', 'width', 'height'],
-  }),
+const effectiveSource = computed(() =>
+  resolveStringTemplates(props.options.src)
+)
 
-  computed: {
-    ...mapState(main, ['country']),
-    effectiveSource() {
-      return resolveStringTemplates(this.options.src)
-    },
+watch(
+  () => props.options.src,
+  async () => {
+    if (effectiveSource.value) {
+      loadImage(
+        `${process.env.EDGES_URL_PUBLIC}/${main().country}/elements/${
+          effectiveSource.value
+        }`
+      )
+    }
   },
+  { immediate: true }
+)
 
-  watch: {
-    'options.src': {
-      immediate: true,
-      async handler() {
-        if (this.effectiveSource) {
-          loadImage(
-            `${process.env.EDGES_URL_PUBLIC}/${this.country}/elements/${this.effectiveSource}`
-          )
-        }
-      },
-    },
-  },
-  async mounted() {
-    this.enableDragResize(this.$refs.image)
-  },
-}
+onMounted(async () => {
+  enableDragResize(image.value!)
+})
+
+const { enableDragResize } = useStepOptions(props)
 </script>
 
 <style scoped>

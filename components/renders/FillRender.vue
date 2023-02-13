@@ -11,25 +11,26 @@
   </rect>
 </template>
 
-<script>
-import stepOptionsMixin from '~/composables/stepOptionsMixin'
+<script setup lang="ts">
+import { baseProps, useStepOptions } from '~/composables/stepOptions'
 
-export default {
-  mixins: [stepOptionsMixin],
+const props = withDefaults(
+  defineProps<
+    baseProps & {
+      options?: {
+        fill: string
+      }
+    }
+  >(),
+  {
+    options: () => ({
+      fill: '#ff0000',
+    }),
+    attributeKeys: () => ['fill'],
+  }
+)
 
-  props: {
-    options: {
-      type: Object,
-      default: () => ({
-        fill: '#ff0000',
-      }),
-    },
-  },
-
-  data: () => ({
-    attributeKeys: ['fill'],
-  }),
-}
+const { attributes, width, height } = useStepOptions(props)
 </script>
 
 <style scoped></style>

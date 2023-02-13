@@ -26,62 +26,78 @@
   </g>
 </template>
 
-<script>
-import stepOptionsMixin from '~/composables/stepOptionsMixin'
+<script setup lang="ts">
+import { onMounted, ref } from '@nuxtjs/composition-api'
 import textTemplate from '~/composables/textTemplate'
+import { baseProps, useStepOptions } from '~/composables/stepOptions'
+import { ui } from '~/stores/ui'
+import { globalEvent } from '~/stores/globalEvent'
 
 const { resolveStringTemplates } = textTemplate()
+const rect1 = ref(null as SVGRectElement | null)
+const rect2 = ref(null as SVGRectElement | null)
 
-export default {
-  mixins: [stepOptionsMixin],
+const props = withDefaults(
+  defineProps<
+    baseProps & {
+      options?: {
+        yDistanceFromCenter?: number | undefined
+        height: number | string
+      }
+    }
+  >(),
+  {
+    options: () => ({
+      yDistanceFromCenter: 5,
+      height: 15,
+    }),
+    attributeKeys: () => ['height'],
+  }
+)
 
-  props: {
-    options: {
-      type: Object,
-      default: () => ({
-        yDistanceFromCenter: 5,
-        height: 15,
-      }),
-    },
-  },
-  data: () => ({
-    attributeKeys: ['height'],
-  }),
+onMounted(() => {
+  const onmove = ({
+    currentTarget,
+    dy,
+  }: {
+    currentTarget: SVGElement | HTMLElement
+    dx: number
+    dy: number
+  }) => {
+    const stapleHeight =
+      typeof props.options.height === 'string'
+        ? parseInt(props.options.height)
+        : props.options.height
+    const isStaple2 = rect2.value === currentTarget
+    const yDistanceFromCenter = Math.min(
+      Math.max(
+        stapleHeight,
+        (props.options.yDistanceFromCenter || 0) +
+          ((isStaple2 ? 1 : -1) * dy) / ui().zoom
+      ),
+      height.value / 2 - stapleHeight * 2
+    )
+    globalEvent().options = {
+      yDistanceFromCenter,
+    }
+  }
 
-  mounted() {
-    const vm = this
-    const onmove = ({ dy, currentTarget }) => {
-      const isStaple2 = vm.$refs.rect2 === currentTarget
-      const yDistanceFromCenter = Math.min(
-        Math.max(
-          vm.options.height,
-          parseInt(
-            vm.options.yDistanceFromCenter +
-              ((isStaple2 ? 1 : -1) * dy) / vm.zoom
-          )
-        ),
-        vm.dimensions.height / 2 - vm.options.height * 2
-      )
-      vm.$root.$emit('set-options', {
-        yDistanceFromCenter,
-      })
+  if (props.options.yDistanceFromCenter === undefined) {
+    globalEvent().options = {
+      yDistanceFromCenter:
+        parseInt(resolveStringTemplates(props.options.y2)) - height.value / 2,
     }
-    if (this.options.yDistanceFromCenter === undefined) {
-      this.$root.$emit('set-options', {
-        yDistanceFromCenter:
-          parseInt(resolveStringTemplates(this.options.y2)) -
-          this.dimensions.height / 2,
-      })
+  }
+  if (typeof props.options.height === 'string') {
+    globalEvent().options = {
+      height: parseInt(resolveStringTemplates(props.options.height)),
     }
-    if (typeof this.options.height === 'string') {
-      this.$root.$emit('set-options', {
-        height: parseInt(resolveStringTemplates(this.options.height)),
-      })
-    }
-    this.enableDragResize(this.$refs.rect1, { onmove })
-    this.enableDragResize(this.$refs.rect2, { onmove })
-  },
-}
+  }
+  enableDragResize(rect1.value!, { onmove, onresizemove: () => {} })
+  enableDragResize(rect2.value!, { onmove, onresizemove: () => {} })
+})
+
+const { enableDragResize, height, attributes } = useStepOptions(props)
 </script>
 
 <style scoped></style>

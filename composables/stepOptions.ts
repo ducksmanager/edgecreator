@@ -81,15 +81,29 @@ export const useStepOptions = (props: baseProps) => {
     optionName.toLowerCase().includes('color') ||
     ['fill', 'stroke'].includes(optionName)
   const enableDragResize = (
-    element: HTMLElement,
-    { onmove, onresizemove }: Interactive
+    element: HTMLElement | SVGElement,
+    callbacks: {
+      onmove:
+        | null
+        | ((params: {
+            currentTarget: SVGElement | HTMLElement
+            dx: number
+            dy: number
+          }) => void)
+      onresizemove:
+        | null
+        | ((params: { rect: { width: number; height: number } }) => void)
+    } = {
+      onmove: null,
+      onresizemove: null,
+    }
   ) => {
     interact(element)
       .draggable({
         onmove: (e) => {
           document.body.classList.add('interacting')
-          if (onmove) {
-            onmove(e)
+          if (callbacks.onmove) {
+            callbacks.onmove(e)
           } else {
             const { dx, dy, shiftKey } = e
             showMoveResizeToast('move')
@@ -113,8 +127,8 @@ export const useStepOptions = (props: baseProps) => {
       })
       .on('resizemove', (e) => {
         document.body.classList.add('interacting')
-        if (onresizemove) {
-          onresizemove(e)
+        if (callbacks.onresizemove) {
+          callbacks.onresizemove(e)
         } else {
           const { rect, shiftKey, edges } = e
           showMoveResizeToast('resize', { edges })
