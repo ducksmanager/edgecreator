@@ -13,7 +13,7 @@ export const main = defineStore('main', {
     magazine: null as string | null,
     issuenumbers: [] as string[],
     isRange: false as boolean,
-    photoUrls: {},
+    photoUrls: {} as { [issuenumber: string]: string[] },
     contributors: {} as {
       [issuenumber: string]: { [contributionType: string]: [] }
     },

@@ -1,16 +1,18 @@
 <template>
   <b-card id="edit-card" no-body>
-    <b-tabs v-model="editingStepNumber" lazy pills card vertical>
+    <b-tabs v-model="editingStepStore.stepNumber" lazy pills card vertical>
       <b-tab v-for="(step, stepNumber) in optionsPerName" :key="stepNumber">
         <template #title>
           <span
-            :class="{ 'hovered-step': hoveredStepNumber === stepNumber }"
-            @mouseover="hoveredStepNumber = stepNumber"
-            @mouseout="hoveredStepNumber = null"
+            :class="{
+              'hovered-step': hoveredStepStore.stepNumber === stepNumber,
+            }"
+            @mouseover="hoveredStepStore.stepNumber = stepNumber"
+            @mouseout="hoveredStepStore.stepNumber = null"
           >
             {{
               $t(
-                supportedRenders.find(
+                rendersStore.supportedRenders.find(
                   (render) => render.component === step.component
                 ).labelL10nKey
               )
@@ -27,14 +29,14 @@
               v-if="step.options.visible && step.options.visible[0] === false"
               :title="$t('Click to show')"
               @click.stop="
-                $root.$emit('set-options', { stepNumber, visible: true })
+                globalEventStore.options = { stepNumber, visible: true }
               "
             />
             <b-icon-eye-fill
               v-else
               :title="$t('Click to hide')"
               @click.stop="
-                $root.$emit('set-options', { stepNumber, visible: false })
+                globalEventStore.options = { stepNumber, visible: false }
               "
             />
             <b-icon-front
@@ -57,7 +59,7 @@
         <b-card-text v-if="step.component === 'Text'">
           <form-input-row
             option-name="text"
-            :label="$t('Text')"
+            :label="$t('Text').toString()"
             type="text"
             :options="step.options"
           >
@@ -90,7 +92,7 @@
           </form-input-row>
           <form-input-row
             option-name="font"
-            :label="$t('Font')"
+            :label="$t('Font').toString()"
             type="text"
             :options="step.options"
             ><a
@@ -104,18 +106,20 @@
             :options="step.options"
             :other-colors="otherColors[stepNumber]"
             option-name="bgColor"
-            :label="$t('Background color')"
+            :label="$t('Background color').toString()"
           />
           <form-color-input-row
             :options="step.options"
             :other-colors="otherColors[stepNumber]"
             option-name="fgColor"
-            :label="$t('Foreground color')"
+            :label="$t('Foreground color').toString()"
           />
           <form-input-row
             option-name="rotation"
             :label="
-              $t('Rotation : {rotation}°', { rotation: step.options.rotation })
+              $t('Rotation : {rotation}°', {
+                rotation: step.options.rotation,
+              }).toString()
             "
             type="range"
             :min="0"
@@ -136,7 +140,7 @@
             :other-colors="otherColors[stepNumber]"
             :options="step.options"
             option-name="fill"
-            :label="$t('Fill color')"
+            :label="$t('Fill color').toString()"
           />
         </b-card-text>
         <b-card-text v-if="step.component === 'Image'">
@@ -144,7 +148,7 @@
             size="sm"
             variant="outline-warning"
             class="d-block my-3 float-right"
-            @click="splitImageAcrossEdges(step)"
+            @click="splitImageAcrossEdges()"
             >{{
               $t(
                 Object.keys(steps).length === 1
@@ -156,17 +160,20 @@
           <div class="clearfix" />
           <form-input-row
             option-name="src"
-            :label="$t('Image')"
+            :label="$t('Image').toString()"
             type="text"
             list-id="src-list"
             :options="step.options"
           >
-            <b-form-datalist id="src-list" :options="publicationElements" />
-            <Gallery
-              :items="publicationElementsForGallery"
+            <b-form-datalist
+              id="src-list"
+              :options="mainStore.publicationElements"
+            />
+            <gallery
+              :items="mainStore.publicationElementsForGallery"
               image-type="elements"
               :selected="step.options.src"
-              @change="$root.$emit('set-options', { src: $event })"
+              @change="globalEventStore.options = { src: $event }"
             />
           </form-input-row>
         </b-card-text>
@@ -177,7 +184,7 @@
             :other-colors="otherColors[stepNumber]"
             :options="step.options"
             :option-name="optionName"
-            :label="$t(ucFirst(optionName + ' color'))"
+            :label="$t(ucFirst(optionName + ' color')).toString()"
             can-be-transparent
           />
         </b-card-text>
@@ -189,7 +196,9 @@
             :options="step.options"
             :option-name="optionName"
             :label="
-              $t(optionName === 'colorStart' ? 'Start color' : 'End color')
+              $t(
+                optionName === 'colorStart' ? 'Start color' : 'End color'
+              ).toString()
             "
           />
 
@@ -197,7 +206,7 @@
             type="select"
             :options="step.options"
             option-name="direction"
-            :label="$t('Direction')"
+            :label="$t('Direction').toString()"
             :select-options="[$t('Vertical'), $t('Horizontal')]"
           />
         </b-card-text>
@@ -209,7 +218,7 @@
             :options="step.options"
             :other-colors="otherColors[stepNumber]"
             option-name="fill"
-            :label="$t('Fill color')"
+            :label="$t('Fill color').toString()"
           />
         </b-card-text>
       </b-tab>
@@ -221,7 +230,7 @@
         <b-card-text>
           <b-dropdown :text="$t('Select a step type')">
             <b-dropdown-item
-              v-for="render in supportedRenders"
+              v-for="render in rendersStore.supportedRenders"
               :key="render.component"
               @click="$emit('add-step', render.component)"
               >{{ $t(render.description) }}
@@ -232,9 +241,7 @@
     </b-tabs>
   </b-card>
 </template>
-<script>
-import { mapState, mapWritableState } from 'pinia'
-
+<script setup lang="ts">
 import {
   BIconArrowDownSquareFill,
   BIconArrowUpSquareFill,
@@ -243,6 +250,7 @@ import {
   BIconFront,
   BIconXSquareFill,
 } from 'bootstrap-vue'
+import { computed } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
 import { renders } from '~/stores/renders'
 import FormColorInputRow from '@/components/FormColorInputRow'
@@ -250,131 +258,126 @@ import FormInputRow from '@/components/FormInputRow'
 import Gallery from '@/components/Gallery'
 import { editingStep } from '~/stores/editingStep'
 import { hoveredStep } from '~/stores/hoveredStep'
+import { globalEvent } from '~/stores/globalEvent'
 
-export default {
-  name: 'ModelEdit',
-  components: {
-    FormColorInputRow,
-    FormInputRow,
-    Gallery,
-    BIconXSquareFill,
-    BIconArrowUpSquareFill,
-    BIconArrowDownSquareFill,
-    BIconEyeFill,
-    BIconEyeSlashFill,
-    BIconFront,
-  },
-  props: {
-    dimensions: { type: Object, required: true },
-    steps: { type: Object, required: true },
-    allStepColors: { type: Object, required: true },
-  },
-  computed: {
-    fontSearchUrl() {
-      return process.env.FONT_SEARCH_URL
-    },
-    optionsPerName() {
-      const vm = this
-      const issueNumbers = Object.keys(this.steps)
-      return this.steps[issueNumbers[0]].map((step, stepNumber) => ({
-        ...step,
-        stepNumber,
-        options: Object.keys(step.options || {}).reduce(
-          (acc, optionName) => ({
-            ...acc,
-            [optionName]: [
-              ...new Set(
-                issueNumbers.map(
-                  (issuenumber) =>
-                    vm.steps[issuenumber][stepNumber].options[optionName]
-                )
-              ),
-            ],
-          }),
-          {}
-        ),
-      }))
-    },
+const hoveredStepStore = hoveredStep()
+const editingStepStore = editingStep()
+const mainStore = main()
+const rendersStore = renders()
+const globalEventStore = globalEvent()
 
-    otherColors() {
-      const currentIssueNumbers = Object.keys(this.steps)
-      const allIssueNumbers = Object.keys(this.allStepColors)
-      const emptyColorList = Object.keys(
-        this.allStepColors[Object.keys(this.steps)[0]]
-      ).reduce((acc, stepNumber) => ({ ...acc, [stepNumber]: [] }), {})
-      return Object.keys(this.optionsPerName)
-        .map((currentStepNumber) => parseInt(currentStepNumber))
-        .map((currentStepNumber) => {
-          const otherColors = {
-            sameIssuenumber: { ...emptyColorList },
+const props = defineProps<{
+  dimensions: { [issuenumber: string]: { width: number; height: number } }
+  steps: {
+    [issuenumber: string]: {
+      component: string
+      options: { [optionName: string]: any }
+    }[]
+  }
+  allStepColors: { [issuenumber: string]: string[] }
+}>()
+
+const issueNumbers = computed(() => Object.keys(props.steps))
+
+const fontSearchUrl = computed(() => process.env.FONT_SEARCH_URL)
+const optionsPerName = computed(() =>
+  props.steps[issueNumbers.value[0]].map((step, stepNumber) => ({
+    ...step,
+    stepNumber,
+    options: Object.keys(step.options || {}).reduce(
+      (acc, optionName) => ({
+        ...acc,
+        [optionName]: [
+          ...new Set(
+            issueNumbers.value.map(
+              (issuenumber) =>
+                props.steps[issuenumber][stepNumber].options[optionName]
+            )
+          ),
+        ],
+      }),
+      {}
+    ),
+  }))
+)
+
+const currentIssueNumbers = computed(() => Object.keys(props.steps))
+const allIssueNumbers = computed(() => Object.keys(props.allStepColors))
+const emptyColorList = computed(() =>
+  Object.keys(props.allStepColors[Object.keys(props.steps)[0]]).reduce(
+    (acc, stepNumber) => ({ ...acc, [stepNumber]: [] }),
+    {}
+  )
+)
+
+const otherColors = computed(() =>
+  Object.keys(optionsPerName.value)
+    .map((currentStepNumber) => parseInt(currentStepNumber))
+    .map((currentStepNumber) => {
+      const otherColors: {
+        differentIssuenumber?: { [p: string]: any[] }
+        sameIssuenumber: { [p: string]: any[] }
+      } = {
+        sameIssuenumber: { ...emptyColorList.value },
+      }
+      if (allIssueNumbers.value.length > 1) {
+        otherColors.differentIssuenumber = { ...emptyColorList.value }
+      }
+      for (const issuenumber of allIssueNumbers.value) {
+        const issueColors = props.allStepColors[issuenumber]
+        issueColors.forEach((stepColors, stepNumber) => {
+          const isCurrentIssueNumber =
+            currentIssueNumbers.value.includes(issuenumber)
+          if (!(isCurrentIssueNumber && currentStepNumber === stepNumber)) {
+            const otherColorGroupKey = isCurrentIssueNumber
+              ? 'sameIssuenumber'
+              : 'differentIssuenumber'
+            otherColors[otherColorGroupKey]![stepNumber] = [
+              ...new Set([
+                ...otherColors[otherColorGroupKey]![stepNumber],
+                ...stepColors,
+              ]),
+            ]
           }
-          if (allIssueNumbers.length > 1) {
-            otherColors.differentIssuenumber = { ...emptyColorList }
-          }
-          allIssueNumbers.forEach((issuenumber) => {
-            const issueColors = this.allStepColors[issuenumber]
-            issueColors.forEach((stepColors, stepNumber) => {
-              const isCurrentIssueNumber =
-                currentIssueNumbers.includes(issuenumber)
-              if (!(isCurrentIssueNumber && currentStepNumber === stepNumber)) {
-                const otherColorGroupKey = isCurrentIssueNumber
-                  ? 'sameIssuenumber'
-                  : 'differentIssuenumber'
-                otherColors[otherColorGroupKey][stepNumber] = [
-                  ...new Set([
-                    ...otherColors[otherColorGroupKey][stepNumber],
-                    ...stepColors,
-                  ]),
-                ]
-              }
-            })
-          })
-          return otherColors
-        })
-    },
-    ...mapWritableState(hoveredStep, { hoveredStepNumber: 'stepNumber' }),
-    ...mapWritableState(editingStep, { editingStepNumber: 'stepNumber' }),
-    ...mapState(main, [
-      'publicationElements',
-      'country',
-      'publicationElementsForGallery',
-    ]),
-    ...mapState(renders, ['supportedRenders']),
-  },
-  methods: {
-    ucFirst: (text) => text[0].toUpperCase() + text.substring(1, text.length),
-
-    resetPositionAndSize(step) {
-      for (const issuenumber of Object.keys(this.steps)) {
-        this.$root.$emit('set-options', {
-          x: 0,
-          y: 0,
-          width: this.dimensions[issuenumber].width,
-          height: this.dimensions[issuenumber].width * step.options.aspectRatio,
-          issuenumbers: [issuenumber],
         })
       }
-    },
+      return otherColors
+    })
+)
 
-    splitImageAcrossEdges() {
-      const vm = this
-      let leftOffset = 0
-      const widthSum = Object.keys(this.steps).reduce(
-        (acc, issuenumber) => acc + vm.dimensions[issuenumber].width,
-        0
-      )
-      for (const issuenumber of Object.keys(this.steps)) {
-        this.$root.$emit('set-options', {
-          x: leftOffset,
-          y: 0,
-          width: widthSum,
-          height: this.dimensions[issuenumber].height,
-          issuenumbers: [issuenumber],
-        })
-        leftOffset -= parseInt(this.dimensions[issuenumber].width)
-      }
-    },
-  },
+const ucFirst = (text: string) =>
+  text[0].toUpperCase() + text.substring(1, text.length)
+
+const resetPositionAndSize = (step: {
+  options: { [optionName: string]: any }
+}) => {
+  for (const issuenumber of Object.keys(props.steps)) {
+    globalEventStore.options = {
+      x: 0,
+      y: 0,
+      width: props.dimensions[issuenumber].width,
+      height: props.dimensions[issuenumber].width * step.options.aspectRatio,
+      issuenumbers: [issuenumber],
+    }
+  }
+}
+
+const splitImageAcrossEdges = () => {
+  let leftOffset = 0
+  const widthSum = Object.keys(props.steps).reduce(
+    (acc, issuenumber) => acc + props.dimensions[issuenumber].width,
+    0
+  )
+  for (const issuenumber of Object.keys(props.steps)) {
+    globalEventStore.options = {
+      x: leftOffset,
+      y: 0,
+      width: widthSum,
+      height: props.dimensions[issuenumber].height,
+      issuenumbers: [issuenumber],
+    }
+    leftOffset -= props.dimensions[issuenumber].width
+  }
 }
 </script>
 <style lang="scss">

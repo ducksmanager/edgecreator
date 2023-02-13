@@ -262,5 +262,6 @@ export default () => {
     canEditEdge,
     getEdgeStatus,
     loadCatalog,
+    isCatalogLoaded,
   }
 }

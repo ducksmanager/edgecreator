@@ -65,9 +65,10 @@
     />
   </div>
 </template>
-<script>
-import { mapActions, mapState } from 'pinia'
+<script setup lang="ts">
 import { useI18n } from 'nuxt-i18n-composable'
+import { computed, onMounted, ref, watch } from '@nuxtjs/composition-api'
+import axios from 'axios'
 import Dimensions from '@/components/Dimensions'
 import edgeCatalog from '~/composables/edgeCatalog'
 import EdgeGallery from '@/components/EdgeGallery'
@@ -76,185 +77,207 @@ import { edgeCatalog as edgeCatalogStore } from '~/stores/edgeCatalog'
 
 const i18n = useI18n()
 
-const { getEdgeStatus, loadCatalog } = edgeCatalog()
+const { getEdgeStatus, loadCatalog, isCatalogLoaded } = edgeCatalog()
 
-export default {
-  components: { EdgeGallery, Dimensions },
-  mixins: [edgeCatalogMixin],
-  props: {
-    countryCode: { type: String, default: null },
-    publicationCode: { type: String, default: null },
-    canBeMultiple: { type: Boolean, default: false },
-    dimensions: { type: Object, default: null },
-    disableOngoingOrPublished: { type: Boolean, required: true },
-    disableNotOngoingNorPublished: { type: Boolean, required: true },
-    edgeGallery: { type: Boolean, default: false },
-    baseIssueNumbers: { type: Array, default: () => [] },
-  },
-  data: () => ({
-    currentCountryCode: null,
-    currentPublicationCode: null,
-    currentIssueNumber: null,
-    currentIssueNumberEnd: null,
-    editMode: 'single',
-    hasMoreIssuesToLoad: { before: false, after: false },
-    surroundingIssuesToLoad: { before: 10, after: 10 },
-  }),
-  computed: {
-    ...mapState(coa, ['countryNames', 'publicationNames', 'issueNumbers']),
-    ...mapState(edgeCatalogStore, ['publishedEdges']),
-
-    countriesWithSelect() {
-      return (
-        this.countryNames && [
-          { value: null, text: i18n.t('Select a country') },
-          ...Object.keys(this.countryNames).map((countryName) => ({
-            value: countryName,
-            text: this.countryNames[countryName],
-          })),
-        ]
-      )
-    },
-    publicationsWithSelect() {
-      const vm = this
-      return (
-        this.publicationNames &&
-        Object.keys(this.publicationNames)
-          .filter(
-            (publicationCode) =>
-              publicationCode.indexOf(`${vm.currentCountryCode}/`) === 0
-          )
-          .map((publicationCode) => ({
-            text: vm.publicationNames[publicationCode],
-            value: publicationCode,
-          }))
-          .sort(({ text: text1 }, { text: text2 }) =>
-            text1 < text2 ? -1 : text2 < text1 ? 1 : 0
-          )
-      )
-    },
-    publicationIssues() {
-      return this.issueNumbers && this.issueNumbers[this.currentPublicationCode]
-    },
-    issuesWithSelect() {
-      const vm = this
-      return (
-        this.publicationIssues &&
-        this.publishedEdges[this.currentPublicationCode] && [
-          { value: null, text: i18n.t('Select an issue number') },
-          ...this.issueNumbers[vm.currentPublicationCode].map((issuenumber) => {
-            const status = getEdgeStatus({
-              country: this.currentCountryCode,
-              magazine: this.currentPublicationCode.split('/')[1],
-              issuenumber,
-            })
-            return {
-              value: issuenumber,
-              text: `${issuenumber}${
-                status === 'none' ? '' : ` (${i18n.t(status)})`
-              }`,
-              disabled:
-                (this.disableOngoingOrPublished && status !== 'none') ||
-                (this.disableNotOngoingNorPublished && status === 'none'),
-            }
-          }),
-        ]
-      )
-    },
-  },
-  watch: {
-    currentCountryCode: {
-      immediate: true,
-      async handler(newValue) {
-        if (newValue) {
-          this.currentPublicationCode = this.publicationCode
-          this.currentIssueNumber = null
-
-          await this.fetchPublicationNamesFromCountry(newValue)
-        }
-      },
-    },
-    currentPublicationCode: {
-      immediate: true,
-      async handler(newValue) {
-        if (newValue) {
-          this.currentIssueNumber = null
-          await this.fetchIssueNumbers([newValue])
-          await this.loadEdges()
-        }
-      },
-    },
-    async surroundingIssuesToLoad() {
-      await this.loadEdges()
-    },
-  },
-  async mounted() {
-    if (this.countryCode) {
-      this.currentCountryCode = this.countryCode
+const emit = defineEmits<{
+  (
+    e: 'change',
+    value: {
+      editMode: string
+      countryCode: string
+      publicationCode: string
+      issueNumber: string
+      issueNumberEnd: string
     }
-    await this.fetchCountryNames(this.$i18n.locale)
-    await loadCatalog(false)
-  },
-  methods: {
-    ...mapActions(coa, [
-      'fetchCountryNames',
-      'fetchPublicationNamesFromCountry',
-      'fetchIssueNumbers',
-    ]),
-    ...mapActions(edgeCatalogStore, ['addPublishedEdges']),
+  ): void
+}>()
 
-    async loadEdges() {
-      let issueNumbersFilter = ''
-      if (this.edgeGallery) {
-        const vm = this
-        const minBaseIssueNumberIndex = this.publicationIssues.indexOf(
-          this.baseIssueNumbers[0]
-        )
-        const maxBaseIssueNumberIndex = this.publicationIssues.indexOf(
-          this.baseIssueNumbers[this.baseIssueNumbers.length - 1]
-        )
-        issueNumbersFilter = `/${this.publicationIssues
-          .filter(
-            (issueNumber, index) =>
-              minBaseIssueNumberIndex - index <
-                vm.surroundingIssuesToLoad.before &&
-              index - maxBaseIssueNumberIndex <
-                vm.surroundingIssuesToLoad.after &&
-              !vm.baseIssueNumbers.includes(issueNumber)
-          )
-          .join(',')}`
-        this.hasMoreIssuesToLoad = {
-          before: issueNumbersFilter[0] !== this.publicationIssues[0],
-          after:
-            issueNumbersFilter[issueNumbersFilter.length] !==
-            this.publicationIssues[this.publicationIssues.length],
-        }
-      }
-      const publishedEdges = await this.$axios.$get(
-        `/api/edges/${this.currentPublicationCode}${issueNumbersFilter}`
+const props = withDefaults(
+  defineProps<{
+    countryCode?: string | null
+    publicationCode?: string | null
+    canBeMultiple: boolean
+    dimensions?: object | null
+    disableOngoingOrPublished: boolean
+    disableNotOngoingNorPublished: boolean
+    edgeGallery: boolean
+    baseIssueNumbers: string[]
+  }>(),
+  {
+    countryCode: null,
+    publicationCode: null,
+    canBeMultiple: false,
+    dimensions: null,
+    edgeGallery: false,
+    baseIssueNumbers: () => [],
+  }
+)
+
+const currentCountryCode = ref(null as string | null)
+const currentPublicationCode = ref(null as string | null)
+const currentIssueNumber = ref(null as string | null)
+const currentIssueNumberEnd = ref(null as string | null)
+const editMode = ref('single' as 'single' | 'range')
+const hasMoreIssuesToLoad = ref({ before: false, after: false })
+const surroundingIssuesToLoad = ref({ before: 10, after: 10 })
+
+const countriesWithSelect = computed(
+  () =>
+    coa().countryNames && [
+      { value: null, text: i18n.t('Select a country') },
+      ...Object.keys(coa().countryNames!).map((countryName) => ({
+        value: countryName,
+        text: coa().countryNames![countryName],
+      })),
+    ]
+)
+const publicationsWithSelect = computed(
+  () =>
+    coa().publicationNames &&
+    Object.keys(coa().publicationNames)
+      .filter(
+        (publicationCode) =>
+          publicationCode.indexOf(`${currentCountryCode.value}/`) === 0
       )
-      this.addPublishedEdges({
-        [this.currentPublicationCode]: publishedEdges.reduce(
-          (acc, { issuenumber, id, modelId }) => ({
-            ...acc,
-            ...(modelId ? { [issuenumber]: { id, modelId } } : {}),
-          }),
-          {}
-        ),
-      })
-    },
+      .map((publicationCode) => ({
+        text: coa().publicationNames[publicationCode],
+        value: publicationCode,
+      }))
+      .sort(({ text: text1 }, { text: text2 }) =>
+        text1 < text2 ? -1 : text2 < text1 ? 1 : 0
+      )
+)
 
-    onChange(data) {
-      this.$emit('change', {
-        ...data,
-        editMode: this.editMode,
-        countryCode: this.currentCountryCode,
-        publicationCode: this.currentPublicationCode,
-        issueNumber: this.currentIssueNumber,
-        issueNumberEnd: this.currentIssueNumberEnd,
-      })
-    },
+const publicationIssues = computed(
+  () => coa().issueNumbers && coa().issueNumbers[currentPublicationCode.value!]
+)
+
+const issuesWithSelect = computed(
+  () =>
+    publicationIssues.value &&
+    edgeCatalogStore().publishedEdges[currentPublicationCode.value!] && [
+      { value: null, text: i18n.t('Select an issue number') },
+      ...coa().issueNumbers[currentPublicationCode.value!].map(
+        (issuenumber) => {
+          const status = getEdgeStatus({
+            country: currentCountryCode.value!,
+            magazine: currentPublicationCode.value!.split('/')[1],
+            issuenumber,
+          })
+          return {
+            value: issuenumber,
+            text: `${issuenumber}${
+              status === 'none' ? '' : ` (${i18n.t(status)})`
+            }`,
+            disabled:
+              (props.disableOngoingOrPublished && status !== 'none') ||
+              (props.disableNotOngoingNorPublished && status === 'none'),
+          }
+        }
+      ),
+    ]
+)
+
+watch(
+  () => currentCountryCode.value,
+  async (newValue) => {
+    if (newValue) {
+      currentPublicationCode.value = props.publicationCode
+      currentIssueNumber.value = null
+
+      await coa().fetchPublicationNamesFromCountry(newValue)
+    }
   },
+  {
+    immediate: true,
+  }
+)
+
+watch(
+  () => currentPublicationCode.value,
+  async (newValue) => {
+    if (newValue) {
+      currentIssueNumber.value = null
+      await coa().fetchIssueNumbers([newValue])
+      await loadEdges()
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  () => surroundingIssuesToLoad.value,
+  async () => {
+    await loadEdges()
+  }
+)
+
+onMounted(async () => {
+  if (props.countryCode) {
+    currentCountryCode.value = props.countryCode
+  }
+  await coa().fetchCountryNames(i18n.locale.value)
+  await loadCatalog(false)
+})
+
+const loadEdges = async () => {
+  let issueNumbersFilter = ''
+  if (props.edgeGallery) {
+    const minBaseIssueNumberIndex = publicationIssues.value.indexOf(
+      props.baseIssueNumbers[0]
+    )
+    const maxBaseIssueNumberIndex = publicationIssues.value.indexOf(
+      props.baseIssueNumbers[props.baseIssueNumbers.length - 1]
+    )
+    issueNumbersFilter = `/${publicationIssues.value
+      .filter(
+        (issueNumber, index) =>
+          minBaseIssueNumberIndex - index <
+            surroundingIssuesToLoad.value.before &&
+          index - maxBaseIssueNumberIndex <
+            surroundingIssuesToLoad.value.after &&
+          !props.baseIssueNumbers.includes(issueNumber)
+      )
+      .join(',')}`
+    hasMoreIssuesToLoad.value = {
+      before: issueNumbersFilter[0] !== publicationIssues.value[0],
+      after:
+        issueNumbersFilter[issueNumbersFilter.length] !==
+        publicationIssues.value[publicationIssues.value.length],
+    }
+  }
+  const publishedEdges = (
+    await axios.get(
+      `/api/edges/${currentPublicationCode.value}${issueNumbersFilter}`
+    )
+  ).data
+  edgeCatalogStore().addPublishedEdges({
+    [currentPublicationCode.value!]: publishedEdges.reduce(
+      (
+        acc: { [issuenumber: string]: { id: number; modelId: number } },
+        {
+          issuenumber,
+          id,
+          modelId,
+        }: { issuenumber: string; id: number; modelId: number }
+      ) => ({
+        ...acc,
+        ...(modelId ? { [issuenumber]: { id, modelId } } : {}),
+      }),
+      {} as { [issuenumber: string]: { id: number; modelId: number } }
+    ),
+  })
+}
+
+const onChange = (data: { width: number; height: number } | {}) => {
+  emit('change', {
+    ...data,
+    editMode: editMode.value,
+    countryCode: currentCountryCode.value!,
+    publicationCode: currentPublicationCode.value!,
+    issueNumber: currentIssueNumber.value!,
+    issueNumberEnd: currentIssueNumberEnd.value!,
+  })
 }
 </script>
 <style scoped lang="scss">

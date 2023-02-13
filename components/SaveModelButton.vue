@@ -68,7 +68,9 @@
           <vue-bootstrap-typeahead
             :ref="`${contributionType}-typeahead`"
             :data="
-              allUsers.filter((user) => !isContributor(user, contributionType))
+              userStore.allUsers.filter(
+                (user) => !isContributor(user, contributionType)
+              )
             "
             :serializer="({ username }) => username"
             :placeholder="$t('Enter a user name')"
@@ -87,7 +89,7 @@
               <b-icon-x-square-fill
                 v-if="
                   !(
-                    user.username === username &&
+                    user.username === userStore.username &&
                     contributionType === 'designers'
                   )
                 "
@@ -105,8 +107,7 @@
     </template>
   </b-button>
 </template>
-<script>
-import { mapActions, mapState, mapWritableState } from 'pinia'
+<script setup lang="ts">
 import {
   BIconArchive,
   BIconCheck,
@@ -115,151 +116,144 @@ import {
   BIconXSquareFill,
 } from 'bootstrap-vue'
 import { useI18n } from 'nuxt-i18n-composable'
+import { computed, onMounted, ref, watch } from '@nuxtjs/composition-api'
+import { nextTick } from 'vue'
 import { ui } from '~/stores/ui'
 import { main } from '~/stores/main'
 import { user } from '~/stores/user'
-import saveEdgeMixin from '@/mixins/saveEdgeMixin'
 import saveEdge from '~/composables/saveEdge'
+import { useCookies } from '~/composables/useCookies'
 
 const { saveEdgeSvg } = saveEdge()
 
 const i18n = useI18n()
+const userStore = user()
+const mainStore = main()
 
-export default {
-  components: {
-    BIconArchive,
-    BIconCheck,
-    BIconCloudArrowUpFill,
-    BIconXSquareFill,
-    BIconX,
-  },
-  mixins: [saveEdgeMixin],
-  props: {
-    withSubmit: {
-      type: Boolean,
-      default: false,
-    },
-    withExport: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  data: () => ({
-    showModal: false,
-    progress: 0,
-    issueIndexToSave: null,
-    result: null,
-  }),
-  computed: {
-    label() {
-      return i18n.t(
-        this.withExport ? 'Export' : this.withSubmit ? 'Submit' : 'Save'
-      )
-    },
-    variant() {
-      return this.withExport || this.withSubmit ? 'success' : 'primary'
-    },
-    ...mapWritableState(ui, ['zoom']),
-    ...mapState(main, ['contributors', 'country', 'magazine', 'issuenumbers']),
-    ...mapWritableState(user, ['allUsers', 'username']),
-  },
-  watch: {
-    progress(newValue) {
-      const vm = this
-      if (parseInt(newValue) === 100) {
+const props = withDefaults(
+  defineProps<{
+    withSubmit: boolean
+    withExport: boolean
+  }>(),
+  {
+    withSubmit: false,
+    withExport: false,
+  }
+)
+
+const showModal = ref(false as boolean)
+const progress = ref(0 as number)
+const issueIndexToSave = ref(null as number | null)
+const result = ref(null as any)
+
+const label = computed(() => {
+  return i18n.t(
+    props.withExport ? 'Export' : props.withSubmit ? 'Submit' : 'Save'
+  )
+})
+
+const variant = computed(() => {
+  return props.withExport || props.withSubmit ? 'success' : 'primary'
+})
+
+watch(
+  () => progress.value,
+  (newValue) => {
+    if (newValue === 100) {
+      window.setTimeout(() => {
+        progress.value = 0
+        result.value = 'success'
         window.setTimeout(() => {
-          vm.progress = 0
-          vm.result = 'success'
-          window.setTimeout(() => {
-            vm.result = null
-          }, 2000)
-        }, 1000)
-      }
-    },
-    issueIndexToSave(newValue) {
-      const vm = this
-      const currentIssueNumber = vm.issuenumbers[newValue]
+          result.value = null
+        }, 2000)
+      }, 1000)
+    }
+  }
+)
+watch(
+  () => issueIndexToSave.value,
+  (newValue) => {
+    const currentIssueNumber = mainStore.issuenumbers[newValue!]
 
-      if (currentIssueNumber === undefined) {
-        return
-      }
+    if (currentIssueNumber === undefined) {
+      return
+    }
 
-      this.zoom = 1.5
-      this.$nextTick(() => {
-        saveEdgeSvg(
-          vm.country,
-          vm.magazine,
-          currentIssueNumber,
-          vm.contributors[currentIssueNumber],
-          vm.withExport,
-          vm.withSubmit
-        ).then((response) => {
-          const isSuccess = response.paths && response.paths.svgPath
-          if (isSuccess) {
-            vm.progress += 100 / vm.issuenumbers.length
-            vm.issueIndexToSave += 1
-          } else {
-            vm.progress = 0
-            vm.result = 'error'
-            vm.issueIndexToSave = null
-          }
-        })
+    ui().zoom = 1.5
+    nextTick(() => {
+      saveEdgeSvg(
+        mainStore.country!,
+        mainStore.magazine!,
+        currentIssueNumber,
+        mainStore.contributors[currentIssueNumber],
+        props.withExport,
+        props.withSubmit
+      ).then((response) => {
+        const isSuccess = response.paths && response.paths.svgPath
+        if (isSuccess) {
+          progress.value += 100 / mainStore.issuenumbers.length
+          issueIndexToSave.value!++
+        } else {
+          progress.value = 0
+          result.value = 'error'
+          issueIndexToSave.value = null
+        }
       })
-    },
-    showModal(newValue) {
-      if (newValue && this.withSubmit) {
-        this.addContributorAllIssues(
-          this.allUsers.find((user) => user.username === this.username),
-          'designers'
-        )
-      }
-    },
-  },
+    })
+  }
+)
 
-  mounted() {
-    this.username = this.$cookies.get('dm-user')
-  },
+watch(
+  () => showModal.value,
+  (newValue) => {
+    if (newValue && props.withSubmit) {
+      addContributorAllIssues(
+        userStore.allUsers!.find(
+          (thisUser) => thisUser.username === userStore.username
+        ),
+        'designers'
+      )
+    }
+  }
+)
 
-  methods: {
-    ucFirst: (text) => text[0].toUpperCase() + text.substring(1, text.length),
-    getContributors(contributionType) {
-      const vm = this
-      return this.allUsers.filter((user) =>
-        vm.isContributor(user, contributionType)
-      )
-    },
-    isContributor(user, contributionType) {
-      const vm = this
-      return Object.keys(this.contributors).reduce(
-        (acc, issueNumber) =>
-          acc ||
-          vm.contributors[issueNumber][contributionType]
-            .map(({ username }) => username)
-            .includes(user.username),
-        false
-      )
-    },
-    addContributorAllIssues(user, contributionType) {
-      const vm = this
-      this.issuenumbers.forEach((issuenumber) => {
-        vm.addContributor({ issuenumber, contributionType, user })
-      })
-    },
-    hasAtLeastOneUser(contributionType) {
-      return Object.values(this.contributors).every(
-        (contributionsForIssue) =>
-          contributionsForIssue[contributionType].length
-      )
-    },
-    onClick() {
-      if (this.withExport || this.withSubmit) {
-        this.showModal = !this.showModal
-      } else {
-        this.issueIndexToSave = 0
-      }
-    },
-    ...mapActions(main, ['addContributor', 'removeContributor']),
-  },
+onMounted(() => {
+  userStore.username = useCookies().get('dm-user')
+})
+
+const ucFirst = (text: string) =>
+  text[0].toUpperCase() + text.substring(1, text.length)
+const getContributors = (contributionType: string) => {
+  return userStore.allUsers!.filter((user) =>
+    isContributor(user, contributionType)
+  )
+}
+
+const isContributor = (user, contributionType: string) => {
+  return Object.keys(mainStore.contributors).reduce(
+    (acc, issueNumber) =>
+      acc ||
+      mainStore.contributors[issueNumber][contributionType]
+        .map(({ username }) => username)
+        .includes(user.username),
+    false
+  )
+}
+const addContributorAllIssues = (user, contributionType: string) => {
+  mainStore.issuenumbers.forEach((issuenumber) => {
+    mainStore.addContributor({ issuenumber, contributionType, user })
+  })
+}
+const hasAtLeastOneUser = (contributionType: string) =>
+  Object.values(mainStore.contributors).every(
+    (contributionsForIssue) => contributionsForIssue[contributionType].length
+  )
+const onClick = () => {
+  if (props.withExport || props.withSubmit) {
+    showModal.value = !showModal.value
+  } else {
+    issueIndexToSave.value = 0
+  }
 }
 </script>
 <style scoped lang="scss">

@@ -7,16 +7,8 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { BIconPencil } from 'bootstrap-vue'
-
-export default {
-  name: 'MultipleTargetOptions',
-
-  components: {
-    BIconPencil,
-  },
-}
 </script>
 
 <style scoped lang="scss">

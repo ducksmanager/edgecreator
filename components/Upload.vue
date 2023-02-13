@@ -5,103 +5,100 @@
   </div>
 </template>
 
-<script>
-import { mapActions } from 'pinia'
+<script setup lang="ts">
 import { useI18n } from 'nuxt-i18n-composable'
+
+import XhrUpload from '@uppy/xhr-upload'
+import Dashboard from '@uppy/dashboard'
+import Uppy from '@uppy/core'
+import { onMounted, ref } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
 
 require('@uppy/core/dist/style.css')
 require('@uppy/dashboard/dist/style.css')
-
-const Uppy = require('@uppy/core')
-const Dashboard = require('@uppy/dashboard')
-const XhrUpload = require('@uppy/xhr-upload')
-
 const i18n = useI18n()
 
-export default {
-  name: 'Upload',
-  props: {
-    withProgress: { type: Boolean, default: true },
-    photo: { type: Boolean, default: false },
-    multiple: { type: Boolean, default: false },
-    edge: { type: Object, default: null },
-  },
-  data() {
-    return {
-      images: [],
-      bytesUploaded: 0,
-      bytesTotal: 0,
-    }
-  },
-  mounted() {
-    const vm = this
-    const locale = this.$i18n.locales.find(
-      ({ code }) => code === vm.$i18n.locale
-    ).iso
-    const uppyTranslations = {
-      'fr-FR': require('@uppy/locales/lib/fr_FR'),
-      'en-US': require('@uppy/locales/lib/en_US'),
-    }
+const props = withDefaults(
+  defineProps<{
+    withProgress: boolean
+    photo: boolean
+    multiple: boolean
+    edge: { issuenumber: string } | null
+  }>(),
+  {
+    withProgress: true,
+    photo: false,
+    multiple: false,
+    edge: null,
+  }
+)
 
-    const uppy = new Uppy({
-      debug: true,
-      locale: uppyTranslations[this.$i18n.locale],
-      allowMultipleUploads: false,
-      meta: {
-        photo: this.photo,
-        multiple: this.multiple,
-        edge: JSON.stringify(this.edge),
-        locale,
-      },
-      restrictions: {
-        maxFileSize: 3 * 1024 * 1024,
-        minNumberOfFiles: 1,
-        maxNumberOfFiles: this.photo ? 1 : 10,
-        allowedFileTypes: this.photo
-          ? ['image/jpg', 'image/jpeg']
-          : ['image/png'],
-      },
-    })
+const mainStore = main()
+const i18n = useI18n()
 
-    uppy
-      .use(Dashboard, {
-        inline: true,
-        target: '.DashboardContainer',
-        replaceTargetContent: true,
-        note: i18n.t('Pictures up to 3 MB'),
-        height: 470,
-        browserBackButtonClose: true,
-        proudlyDisplayPoweredByUppy: false,
-      })
-      .use(XhrUpload, {
-        endpoint: '/fs/upload',
-        getResponseError: (responseText) => {
-          const { error, placeholders } = JSON.parse(responseText)
-          return new Error(i18n.t(error, placeholders))
-        },
-      })
-      .run()
-    uppy.on('upload-progress', (data) => {
-      vm.$emit('upload-progress', data)
-      vm.bytesUploaded = data.bytesUploaded
+const bytesUploaded = ref(0)
+
+onMounted(() => {
+  const locale = this.$i18n.locales.find(
+    ({ code }) => code === i18n.locale.value
+  ).iso
+  const uppyTranslations = {
+    'fr-FR': require('@uppy/locales/lib/fr_FR'),
+    'en-US': require('@uppy/locales/lib/en_US'),
+  }
+
+  const uppy = new Uppy({
+    debug: true,
+    locale: uppyTranslations[i18n.locale.value],
+    allowMultipleUploads: false,
+    meta: {
+      photo: props.photo,
+      multiple: props.multiple,
+      edge: JSON.stringify(props.edge),
+      locale,
+    },
+    restrictions: {
+      maxFileSize: 3 * 1024 * 1024,
+      minNumberOfFiles: 1,
+      maxNumberOfFiles: props.photo ? 1 : 10,
+      allowedFileTypes: props.photo
+        ? ['image/jpg', 'image/jpeg']
+        : ['image/png'],
+    },
+  })
+
+  uppy
+    .use(Dashboard, {
+      inline: true,
+      target: '.DashboardContainer',
+      replaceTargetContent: true,
+      note: i18n.t('Pictures up to 3 MB'),
+      height: 470,
+      browserBackButtonClose: true,
+      proudlyDisplayPoweredByUppy: false,
     })
-    uppy.on('upload-success', (fileId, payload) => {
-      vm.$emit('upload-success')
-      if (vm.photo && !vm.multiple) {
-        vm.setPhotoUrl({
-          issuenumber: vm.edge.issuenumber,
-          filename: payload.body.filename,
-        })
-      } else {
-        vm.loadItems({ itemType: vm.photo ? 'photos' : 'elements' })
-      }
+    .use(XhrUpload, {
+      endpoint: '/fs/upload',
+      getResponseError: (responseText: string) => {
+        const { error, placeholders } = JSON.parse(responseText)
+        return new Error(i18n.t(error, placeholders).toString())
+      },
     })
-  },
-  methods: {
-    ...mapActions(main, ['setPhotoUrl', 'loadItems']),
-  },
-}
+    .run()
+  uppy.on('upload-progress', (data: { bytesUploaded: number }) => {
+    bytesUploaded.value = data.bytesUploaded
+  })
+  uppy.on('upload-success', (_, payload: { body: { filename: string } }) => {
+    if (props.photo && !props.multiple) {
+      mainStore.setPhotoUrl({
+        issuenumber: props.edge!.issuenumber,
+        filename: payload.body.filename,
+      })
+    } else {
+      mainStore.loadItems({ itemType: props.photo ? 'photos' : 'elements' })
+    }
+  })
+})
 </script>
 
 <style lang="scss">

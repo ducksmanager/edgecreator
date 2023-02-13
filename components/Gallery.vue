@@ -80,49 +80,44 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia'
+<script setup lang="ts">
 import {
   BIconEmojiFrownFill,
   BIconEmojiNeutralFill,
   BIconEmojiSmileFill,
 } from 'bootstrap-vue'
+import { computed, ref } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
 import Upload from '@/components/Upload'
-import legacyDbMixin from '@/mixins/legacyDbMixin'
 
-export default {
-  name: 'Gallery',
-  components: {
-    Upload,
-    BIconEmojiSmileFill,
-    BIconEmojiNeutralFill,
-    BIconEmojiFrownFill,
-  },
-  mixins: [legacyDbMixin],
-  props: {
-    loading: { type: Boolean, default: false },
-    imageType: { type: String, required: true },
-    selected: { type: Array, default: () => [] },
-    allowUpload: { type: Boolean, default: true },
-    items: { type: Array, required: true },
-  },
-  data: () => ({
-    clickedImage: null,
-    showUploadModal: false,
-    showChooseImageModal: false,
-  }),
-  computed: {
-    ...mapState(main, ['country', 'magazine', 'issuenumbers']),
-  },
-  methods: {
-    onSelect(item) {
-      if (!item.disabled) {
-        this.clickedImage = item
-        this.showChooseImageModal = true
-      }
-    },
-  },
+withDefaults(
+  defineProps<{
+    loading: boolean
+    imageType: string
+    selected: any[]
+    allowUpload: boolean
+    items: any[]
+  }>(),
+  {
+    loading: false,
+    selected: () => [],
+    allowUpload: true,
+  }
+)
+
+const clickedImage = ref(null as any)
+const showUploadModal = ref(false as boolean)
+const showChooseImageModal = ref(false as boolean)
+
+const country = computed(() => main().country)
+const magazine = computed(() => main().magazine)
+const issuenumbers = computed(() => main().issuenumbers)
+
+const onSelect = (item) => {
+  if (!item.disabled) {
+    clickedImage.value = item
+    showChooseImageModal.value = true
+  }
 }
 </script>
 

@@ -1,7 +1,7 @@
 <template>
   <b-img
     :height="(naturalHeight * zoom) / 1.5"
-    :src="getEdgeUrl(issuenumber)"
+    :src="getEdgeUrl()"
     @load="
       naturalHeight = $event.currentTarget.naturalHeight
       $emit('load')
@@ -10,31 +10,19 @@
   />
 </template>
 
-<script>
-import { mapState } from 'pinia'
+<script setup lang="ts">
+import { computed, ref } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
 import { ui } from '~/stores/ui'
 
-export default {
-  name: 'PublishedEdge',
-  props: {
-    issuenumber: { type: String, required: true },
-  },
-  data() {
-    return {
-      naturalHeight: 0,
-    }
-  },
-  computed: {
-    ...mapState(main, ['country', 'magazine']),
-    ...mapState(ui, ['zoom']),
-  },
-  methods: {
-    getEdgeUrl() {
-      return `/edges/${this.country}/gen/${this.magazine}.${this.issuenumber}.png`
-    },
-  },
-}
+const props = defineProps<{
+  issuenumber: string
+}>()
+
+const naturalHeight = ref(0 as number)
+const zoom = computed(() => ui().zoom)
+const getEdgeUrl = () =>
+  `/edges/${main().country}/gen/${main().magazine}.${props.issuenumber}.png`
 </script>
 
 <style scoped></style>

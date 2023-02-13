@@ -5,17 +5,11 @@
   </div>
 </template>
 
-<script>
-import { mapState } from 'pinia'
+<script setup lang="ts">
+import { computed } from '@nuxtjs/composition-api'
 import { ui } from '~/stores/ui'
 
-export default {
-  name: 'PositionHelper',
-
-  computed: {
-    ...mapState(ui, ['positionInCanvas']),
-  },
-}
+const positionInCanvas = computed(() => ui().positionInCanvas)
 </script>
 
 <style scoped></style>

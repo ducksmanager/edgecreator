@@ -11,18 +11,21 @@
             <b-row class="zoom-option">
               <b-col cols="3">
                 <input
-                  v-model="zoom"
+                  v-model="uiStore.zoom"
                   type="range"
                   min="1"
                   max="8"
                   step="0.5"
                   style="width: 100%"
               /></b-col>
-              <b-col>{{ $t('Zoom') }}: {{ zoom }}</b-col>
+              <b-col>{{ $t('Zoom') }}: {{ uiStore.zoom }}</b-col>
             </b-row>
             <b-row>
               <b-col cols="3">
-                <b-checkbox id="showIssueNumbers" v-model="showIssueNumbers" />
+                <b-checkbox
+                  id="showIssueNumbers"
+                  v-model="uiStore.showIssueNumbers"
+                />
               </b-col>
               <b-col
                 ><label for="showIssueNumbers">{{
@@ -35,7 +38,9 @@
                 <b-checkbox
                   id="showPreviousEdge"
                   v-model="showPreviousEdge"
-                  :disabled="!edgesBefore.length || showPreviousEdge === null"
+                  :disabled="
+                    !mainStore.edgesBefore.length || showPreviousEdge === null
+                  "
                 />
               </b-col>
               <b-col
@@ -49,7 +54,9 @@
                 <b-checkbox
                   id="showNextEdge"
                   v-model="showNextEdge"
-                  :disabled="!edgesAfter.length || showNextEdge === null"
+                  :disabled="
+                    !mainStore.edgesAfter.length || showNextEdge === null
+                  "
                 />
               </b-col>
               <b-col
@@ -74,7 +81,10 @@
             </b-row>
             <b-row>
               <b-col cols="3">
-                <b-checkbox id="showEdgeOverflow" v-model="showEdgeOverflow" />
+                <b-checkbox
+                  id="showEdgeOverflow"
+                  v-model="uiStore.showEdgeOverflow"
+                />
               </b-col>
               <b-col
                 ><label for="showEdgeOverflow">{{
@@ -96,18 +106,19 @@
     <b-row align="center" class="pb-1">
       <b-col v-if="publicationName" align-self="center">
         <issue
-          :publicationcode="`${country}/${magazine}`"
+          :publicationcode="`${mainStore.country}/${mainStore.magazine}`"
           :publicationname="publicationName"
-          :issuenumber="issuenumbers[0]"
+          :issuenumber="mainStore.issuenumbers[0]"
           hide-condition
         >
           <template v-if="isEditingMultiple" #title-suffix>
-            <template v-if="isRange"
-              >{{ $t('to') }} {{ issuenumbers[issuenumbers.length - 1] }}
+            <template v-if="mainStore.isRange"
+              >{{ $t('to') }}
+              {{ mainStore.issuenumbers[mainStore.issuenumbers.length - 1] }}
             </template>
-            <template v-else-if="issuenumbers.length > 1"
+            <template v-else-if="mainStore.issuenumbers.length > 1"
               ><span
-                v-for="otherIssuenumber in issuenumbers.slice(1)"
+                v-for="otherIssuenumber in mainStore.issuenumbers.slice(1)"
                 :key="`other-${otherIssuenumber}`"
                 >, {{ otherIssuenumber }}</span
               ></template
@@ -168,7 +179,7 @@
           <b-modal v-model="showPhotoModal" ok-only>
             <gallery
               image-type="photos"
-              :items="publicationPhotosForGallery"
+              :items="mainStore.publicationPhotosForGallery"
               @change="addPhoto"
             />
           </b-modal>
@@ -227,9 +238,9 @@
           <b-collapse id="collapse-clone" v-model="collapseClone" class="mt-2">
             <issue-select
               v-if="collapseClone"
-              :country-code="country"
-              :publication-code="`${country}/${magazine}`"
-              :base-issue-numbers="issuenumbers"
+              :country-code="mainStore.country"
+              :publication-code="`${mainStore.country}/${mainStore.magazine}`"
+              :base-issue-numbers="mainStore.issuenumbers"
               :disable-ongoing-or-published="false"
               edge-gallery
               disable-not-ongoing-nor-published
@@ -247,8 +258,7 @@
     <session-info />
   </b-container>
 </template>
-<script>
-import { mapActions, mapState, mapWritableState } from 'pinia'
+<script setup lang="ts">
 import {
   BIconArrowsAngleExpand,
   BIconCamera,
@@ -257,6 +267,7 @@ import {
   BIconInfoCircleFill,
 } from 'bootstrap-vue'
 import Issue from 'ducksmanager/assets/js/components/Issue.vue'
+import { computed, onMounted, ref } from '@nuxtjs/composition-api'
 import MultipleTargetOptions from './MultipleTargetOptions'
 import { ui } from '~/stores/ui'
 import { coa } from '~/stores/coa'
@@ -270,91 +281,53 @@ import SessionInfo from '@/components/SessionInfo'
 import surroundingEdge from '~/composables/surroundingEdge'
 
 const uiStore = ui()
+const mainStore = main()
 
 const { showPreviousEdge, showNextEdge } = surroundingEdge()
 
-export default {
-  name: 'TopBar',
-  components: {
-    SessionInfo,
-    ConfirmEditMultipleValues,
-    MultipleTargetOptions,
-    SaveModelButton,
-    Issue,
-    IssueSelect,
-    Gallery,
-    Dimensions,
-    BIconArrowsAngleExpand,
-    BIconCamera,
-    BIconFront,
-    BIconHouse,
-    BIconInfoCircleFill,
-  },
-  props: {
-    dimensions: {
-      type: Object,
-      required: true,
-    },
-  },
-  data() {
-    return {
-      showSidebar: true,
-      showPhotoModal: false,
-      showUploadPhotoModal: false,
+const props = defineProps<{
+  dimensions: {
+    width: number
+    height: number
+  }
+}>()
 
-      showCloneModal: false,
-      modelToClone: null,
+const showPhotoModal = ref(false as boolean)
+const modelToClone = ref(null)
+const collapseDimensions = ref(false as boolean)
+const collapseClone = ref(false as boolean)
 
-      collapseDimensions: false,
-      collapseClone: false,
-    }
-  },
-  computed: {
-    ...mapWritableState(ui, ['zoom', 'showIssueNumbers', 'showEdgeOverflow']),
+const hasPhotoUrl = computed(() => Object.keys(mainStore.photoUrls).length)
+const publicationName = computed(
+  () =>
+    coa().publicationNames &&
+    coa().publicationNames[`${mainStore.country}/${mainStore.magazine}`]
+)
+const uniqueDimensions = computed(() =>
+  [
+    ...new Set(
+      Object.values(props.dimensions).map((item) => JSON.stringify(item))
+    ),
+  ].map((item) => JSON.parse(item))
+)
 
-    hasPhotoUrl() {
-      return Object.keys(this.photoUrls).length
-    },
-    publicationName() {
-      return (
-        this.publicationNames &&
-        this.publicationNames[`${this.country}/${this.magazine}`]
-      )
-    },
-    uniqueDimensions() {
-      return [
-        ...new Set(
-          Object.values(this.dimensions).map((item) => JSON.stringify(item))
-        ),
-      ].map((item) => JSON.parse(item))
-    },
-    isEditingMultiple() {
-      return this.isRange || this.issuenumbers.length > 1
-    },
-    ...mapState(main, [
-      'country',
-      'magazine',
-      'issuenumbers',
-      'isRange',
-      'edgesBefore',
-      'edgesAfter',
-      'photoUrls',
-      'publicationPhotosForGallery',
-    ]),
-    ...mapState(coa, ['publicationNames']),
-  },
-  async mounted() {
-    await this.fetchPublicationNames([`${this.country}/${this.magazine}`])
-  },
-  methods: {
-    addPhoto(src) {
-      if (!(this.photoUrls[this.issuenumbers[0]] || []).includes(src)) {
-        this.setPhotoUrl({ issuenumber: this.issuenumbers[0], filename: src })
-      }
-    },
-    ...mapActions(main, ['setPhotoUrl']),
-    ...mapActions(coa, ['fetchPublicationNames']),
-  },
+const isEditingMultiple = computed(() => {
+  return mainStore.isRange || mainStore.issuenumbers.length > 1
+})
+
+onMounted(async () => {
+  await coa().fetchPublicationNames([
+    `${mainStore.country}/${mainStore.magazine}`,
+  ])
+})
+
+const addPhoto = (src: string) => {
+  if (!(mainStore.photoUrls[mainStore.issuenumbers[0]] || []).includes(src)) {
+    mainStore.setPhotoUrl({
+      issuenumber: mainStore.issuenumbers[0],
+      filename: src,
+    })
+  }
 }
 </script>
 <style lang="scss">
