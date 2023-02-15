@@ -9,6 +9,8 @@ import { useGates } from '~/composables/useGates'
 
 const { getSvgMetadata, loadSvgFromString } = svgUtils()
 
+const edgeCatalogStore = edgeCatalog()
+
 const gates = useGates()
 
 type Edge = {
@@ -17,6 +19,20 @@ type Edge = {
   issuenumber: string
   designers: any[]
   photographers: any[]
+}
+
+type EdgeFromApi = {
+  pays: string
+  magazine: string
+  numero: string
+  contributeurs: any[]
+  photos: any[]
+}
+
+export type EdgeWithVersionAndStatus = Edge & {
+  status: string | null
+  v3: boolean
+  published?: string | null
 }
 
 const {
@@ -59,16 +75,16 @@ export default () => {
       }),
       {}
     )
-    if (!edgeCatalog().currentEdges) {
+    if (!edgeCatalogStore.currentEdges) {
       return edgesByStatus
     }
-    return Object.values(edgeCatalog().currentEdges).reduce(
+    return Object.values(edgeCatalogStore.currentEdges).reduce(
       (acc: typeof edgesByStatus, edge) => {
         const publicationcode = `${edge.country}/${edge.magazine}`
-        if (!acc[edge.status][publicationcode]) {
-          acc[edge.status][publicationcode] = []
+        if (!acc[edge.status!][publicationcode]) {
+          acc[edge.status!][publicationcode] = []
         }
-        acc[edge.status][publicationcode].push(edge)
+        acc[edge.status!][publicationcode].push(edge)
         return acc
       },
       edgesByStatus
@@ -82,13 +98,7 @@ export default () => {
       numero: issuenumber,
       contributeurs: contributors,
       photos,
-    }: {
-      pays: string
-      magazine: string
-      numero: string
-      contributeurs: any[]
-      photos: any[]
-    },
+    }: EdgeFromApi,
     status: string
   ) => {
     const issuecode = `${country}/${magazine} ${issuenumber}`
@@ -115,12 +125,12 @@ export default () => {
     }
   }
 
-  const getEdgeFromSvg = (edge: Edge) => ({
+  const getEdgeFromSvg = (edge: Edge): EdgeWithVersionAndStatus => ({
     ...edge,
     v3: true,
     status: edgeCategories.value.reduce(
-      (acc, { status, svgCheckFn }) =>
-        acc || (svgCheckFn(edge, user().username) ? status : null),
+      (acc: string | null, { status, svgCheckFn }) =>
+        acc || (svgCheckFn(edge, user().username!) ? status : null),
       null
     ),
   })
@@ -141,14 +151,14 @@ export default () => {
     let isPublished = false
     const publicationcode = `${country}/${magazine}`
     const publishedEdgesForPublication =
-      edgeCatalog().publishedEdges[publicationcode] || {}
+      edgeCatalogStore.publishedEdges[publicationcode] || {}
     if (publishedEdgesForPublication[issuenumber]) {
       isPublished = true
     }
     const issuecode = `${publicationcode} ${issuenumber}`
 
     return (
-      edgeCatalog().currentEdges[issuecode] || {
+      edgeCatalogStore.currentEdges[issuecode] || {
         status: isPublished ? 'Published' : 'none',
       }
     ).status
@@ -158,11 +168,11 @@ export default () => {
     if (isCatalogLoaded.value) {
       return
     }
-    let currentEdges: { [issuecode: string]: Edge & { published?: true } } = {}
-    const publishedSvgEdges = {}
+    let currentEdges: typeof edgeCatalogStore.currentEdges = {}
+    const publishedSvgEdges: typeof edgeCatalogStore.publishedEdges = {}
 
     for (const { status, apiUrl } of edgeCategories.value) {
-      const data = (await axios.get(apiUrl)).data
+      const data = (await axios.get(apiUrl)).data as EdgeFromApi[]
       currentEdges = data.reduce((acc, edgeData) => {
         const edge = getEdgeFromApi(edgeData, status)
         return { ...acc, [edge.issuecode]: edge }
@@ -243,10 +253,10 @@ export default () => {
         )
       }
 
-      edgeCatalog().addCurrentEdges(currentEdges)
+      edgeCatalogStore.addCurrentEdges(currentEdges)
     }
 
-    edgeCatalog().addPublishedEdges(publishedSvgEdges)
+    edgeCatalogStore.addPublishedEdges(publishedSvgEdges)
 
     isCatalogLoaded.value = true
   }

@@ -28,7 +28,8 @@ import { ui } from '~/stores/ui'
 import { globalEvent } from '~/stores/globalEvent'
 import { base64 } from '~/composables/base64'
 
-const { resolveStringTemplates } = textTemplate()
+const { resolveIssueNumberTemplate, resolveIssueNumberPartTemplate } =
+  textTemplate()
 
 const imageRef = ref(null as SVGImageElement | null)
 
@@ -78,11 +79,14 @@ const textImage = ref(
     url: string
   } | null
 )
-const textImageOptions = ref(null as typeof props | null)
+const textImageOptions = ref(null as typeof props.options | null)
 
-const effectiveText = computed(() => {
-  return resolveStringTemplates(props.options.text)
-})
+const effectiveText = computed(() =>
+  resolveIssueNumberTemplate(
+    props.options.text,
+    resolveIssueNumberPartTemplate(props.options.text, props.issuenumber)
+  )
+)
 
 watch(
   () => textImage.value,
@@ -257,7 +261,7 @@ const applyTextImageDimensions = () => {
 }
 
 const { width, attributes, enableDragResize } = useStepOptions(props)
-const { image, loadImage } = base64()
+const { image, loadImage } = base64(props)
 </script>
 
 <style scoped lang="scss">

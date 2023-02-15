@@ -2,24 +2,35 @@ import { set } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { main } from '~/stores/main'
+import { EdgeWithVersionAndStatus } from '~/composables/edgeCatalog'
 
 const URL_PREFIX_STEPS = '/api/edgecreator/v2/model/'
 
 export const edgeCatalog = defineStore('edgeCatalog', {
   state: () => ({
     currentEdges: {} as {
-      [publicationcode: string]: { country: string; magazine: string }
+      [issuecode: string]: EdgeWithVersionAndStatus
     },
     publishedEdges: {} as {
-      [publicationcode: string]: { [issuenumber: string]: object }
+      [publicationcode: string]: {
+        [issuenumber: string]: { issuenumber: string; v3: boolean }
+      }
     },
-    publishedEdgesSteps: {} as { [publicationcode: string]: object },
+    publishedEdgesSteps: {} as {
+      [publicationcode: string]: {
+        [issuenumber: string]: {
+          [optionName: string]: {
+            stepNumber: number
+            functionName: string
+            options: { [optionName: string]: any }
+          }
+        }
+      }
+    },
   }),
 
   actions: {
-    addCurrentEdges(edges: {
-      [publicationcode: string]: { country: string; magazine: string }
-    }) {
+    addCurrentEdges(edges: { [issuecode: string]: EdgeWithVersionAndStatus }) {
       this.currentEdges = { ...this.currentEdges, ...edges }
     },
     addPublishedEdges(publishedEdges: {
@@ -47,7 +58,15 @@ export const edgeCatalog = defineStore('edgeCatalog', {
       publishedEdgesSteps,
     }: {
       publicationcode: string
-      publishedEdgesSteps: { [publicationcode: string]: object }
+      publishedEdgesSteps: {
+        [publicationcode: string]: {
+          [issuenumber: string]: {
+            stepNumber: number
+            functionName: string
+            options: { [optionName: string]: any }
+          }
+        }
+      }
     }) {
       if (!this.publishedEdgesSteps[publicationcode]) {
         this.publishedEdgesSteps[publicationcode] = {}

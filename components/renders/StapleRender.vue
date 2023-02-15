@@ -33,7 +33,7 @@ import { baseProps, useStepOptions } from '~/composables/stepOptions'
 import { ui } from '~/stores/ui'
 import { globalEvent } from '~/stores/globalEvent'
 
-const { resolveStringTemplates } = textTemplate()
+const { resolveHeightTemplate } = textTemplate()
 const rect1 = ref(null as SVGRectElement | null)
 const rect2 = ref(null as SVGRectElement | null)
 
@@ -85,12 +85,15 @@ onMounted(() => {
   if (props.options.yDistanceFromCenter === undefined) {
     globalEvent().options = {
       yDistanceFromCenter:
-        parseInt(resolveStringTemplates(props.options.y2)) - height.value / 2,
+        parseInt(resolveHeightTemplate(props.options.y2, height.value)) -
+        height.value / 2,
     }
   }
   if (typeof props.options.height === 'string') {
     globalEvent().options = {
-      height: parseInt(resolveStringTemplates(props.options.height)),
+      height: parseInt(
+        resolveHeightTemplate(props.options.height, height.value)
+      ),
     }
   }
   enableDragResize(rect1.value!, { onmove, onresizemove: () => {} })

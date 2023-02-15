@@ -13,7 +13,7 @@
   </span>
   <span v-else><slot /></span>
 </template>
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ref } from '@nuxtjs/composition-api'
 
 defineProps<{

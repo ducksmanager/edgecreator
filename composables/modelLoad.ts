@@ -6,7 +6,7 @@ import { renders } from '~/stores/renders'
 import useDimensions from '~/composables/dimensions'
 import svgUtils from '~/composables/svgUtils'
 import stepList from '~/composables/stepList'
-import legacyDbMixin from '~/composables/legacyDb'
+import legacyDb, { LegacyComponent } from '~/composables/legacyDb'
 
 const mainStore = main()
 const rendersStore = renders()
@@ -15,14 +15,14 @@ const edgeCatalogStore = edgeCatalog()
 
 const { getSvgMetadata, loadSvgFromString } = svgUtils()
 
-const { getOptionsFromDb } = legacyDbMixin()
+const { getOptionsFromDb } = legacyDb()
 
 export default () => {
-  const getDimensionsFromSvg = (svgElement: HTMLElement) => ({
+  const getDimensionsFromSvg = (svgElement: SVGElement) => ({
     width: parseInt(svgElement.getAttribute('width')!) / 1.5,
     height: parseInt(svgElement.getAttribute('height')!) / 1.5,
   })
-  const getStepsFromSvg = (svgChildNodes: HTMLElement[]) =>
+  const getStepsFromSvg = (svgChildNodes: SVGElement[]) =>
     svgChildNodes
       .filter(({ nodeName }) => nodeName === 'g')
       .map((group) => ({
@@ -78,11 +78,11 @@ export default () => {
   const getStepsFromApi = async (
     publicationcode: string,
     issuenumber: string,
-    stepData: {
+    apiSteps: {
       [optionName: string]: {
         stepNumber: number
         functionName: string
-        options: any
+        options: { [optionName: string]: any }
       }
     },
     dimensions: { width: number; height: number },
@@ -91,7 +91,7 @@ export default () => {
   ) =>
     (
       await Promise.all(
-        Object.values(stepData)
+        Object.values(apiSteps)
           .filter(
             ({ stepNumber: originalStepNumber }) => originalStepNumber !== -1
           )
@@ -111,8 +111,11 @@ export default () => {
                     options: await getOptionsFromDb(
                       publicationcode,
                       issuenumber,
-                      stepNumber,
-                      { component, options: originalOptions },
+                      originalStepNumber,
+                      {
+                        component,
+                        options: originalOptions,
+                      } as LegacyComponent,
                       dimensions,
                       calculateBase64
                     ),

@@ -1,7 +1,7 @@
 import { ref } from '@nuxtjs/composition-api'
-import { useStepOptions } from '~/composables/stepOptions'
+import { baseProps, useStepOptions } from '~/composables/stepOptions'
 
-export const base64 = () => {
+export const base64 = (props: baseProps) => {
   const image = ref(
     null as {
       base64: string | null
@@ -23,7 +23,7 @@ export const base64 = () => {
         width: img.naturalWidth,
         height: img.naturalHeight,
       }
-      useStepOptions().enableDragResize(img)
+      useStepOptions(props).enableDragResize(img)
     }
     img.onerror = (e) => {
       console.error(`Base64 image could not be retrieved : ${src} : ${e}`)

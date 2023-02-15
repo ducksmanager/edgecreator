@@ -15,11 +15,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from '@nuxtjs/composition-api'
 import { main } from '~/stores/main'
-import { loadImage } from '~/composables/base64'
+import { base64 } from '~/composables/base64'
 import textTemplate from '~/composables/textTemplate'
 import { baseProps, useStepOptions } from '~/composables/stepOptions'
 
-const { resolveStringTemplates } = textTemplate()
+const { resolveIssueNumberTemplate } = textTemplate()
 
 const image = ref(null)
 
@@ -46,9 +46,10 @@ const props = withDefaults(
     attributeKeys: () => ['x', 'y', 'width', 'height'],
   }
 )
+const { loadImage } = base64(props)
 
 const effectiveSource = computed(() =>
-  resolveStringTemplates(props.options.src)
+  resolveIssueNumberTemplate(props.options.src!, props.issuenumber)
 )
 
 watch(

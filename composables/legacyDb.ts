@@ -1,7 +1,7 @@
 import axios from 'axios'
 import textTemplate from '~/composables/textTemplate'
 
-const { resolveStringTemplates } = textTemplate()
+const { resolveIssueNumberTemplate } = textTemplate()
 
 const componentToHex = (c: number) => {
   const hex = c.toString(16)
@@ -15,7 +15,7 @@ const rgbToHex = (color: string) => {
   return `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`
 }
 
-type LegacyComponent =
+export type LegacyComponent =
   | {
       component: 'ArcCircle'
       options: {
@@ -204,15 +204,9 @@ export default () => {
         )
         let image
         try {
-          const elementPath = `${country}/elements/${resolveStringTemplates(
+          const elementPath = `${country}/elements/${resolveIssueNumberTemplate(
             dbOptions.Source,
-            {
-              dimensions: {
-                width: String(edgeDimensions.width),
-                height: String(edgeDimensions.height),
-              },
-              issuenumber,
-            }
+            issuenumber
           )}`
 
           if (calculateBase64) {

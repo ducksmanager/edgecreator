@@ -83,7 +83,7 @@ export default {
             code: 'en',
             name: 'English',
             iso: 'en-US',
-            file: 'en-US.js',
+            file: 'en-US.ts',
           },
         ],
       },
