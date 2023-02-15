@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
+import { GET__global_stats__user__$userIds } from 'ducksmanager-api/types/routes'
+
 export const user = defineStore('user', {
   state: () => ({
     allUsers: null as any[] | null,
@@ -18,11 +20,13 @@ export const user = defineStore('user', {
     async fetchUserPoints() {
       const userIdData = (await axios.get(`/user-id`)).data
       const userData = (
-        await axios.get(`/api/global-stats/user/${userIdData.id}`)
+        await GET__global_stats__user__$userIds(axios, {
+          urlParams: { userIds: userIdData },
+        })
       ).data
-      this.userPhotographerPoints = (
-        userData.points as { contribution: string; points_total: number }[]
-      ).find(({ contribution }) => contribution === 'Photographe')!.points_total
+      this.userPhotographerPoints = Object.values(userData.points).find(
+        ({ contribution }) => contribution === 'Photographe'
+      )!.points_total
     },
   },
 })

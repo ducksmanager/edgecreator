@@ -1,15 +1,17 @@
 import { set } from 'vue'
 import axios from 'axios'
 import { defineStore } from 'pinia'
+import {
+  GET__coa__list__countries__$locale,
+  GET__coa__list__issues__details,
+} from 'ducksmanager-api/types/routes'
 import { main } from '~/stores/main'
 
 const coaApi = axios.create({})
 
-const URL_PREFIX_COUNTRIES = `/api/coa/list/countries/LOCALE`
 const URL_PREFIX_PUBLICATIONS = '/api/coa/list/publications/'
 const URL_PREFIX_ISSUES = '/api/coa/list/issues/'
 const URL_PREFIX_AUTHORS = '/api/coa/authorsfullnames/'
-const URL_PREFIX_URLS = '/api/coa/list/details/'
 const URL_ISSUE_COUNTS = '/api/coa/list/issues/count'
 
 export const coa = defineStore('coa', {
@@ -50,12 +52,10 @@ export const coa = defineStore('coa', {
       if (!this.isLoadingCountryNames && !this.countryNames) {
         this.isLoadingCountryNames = true
         this.countryNames = (
-          await coaApi.get(
-            URL_PREFIX_COUNTRIES.replace(
-              'LOCALE',
-              locale || localStorage.getItem('locale')!
-            )
-          )
+          await GET__coa__list__countries__$locale(axios, {
+            urlParams: { locale: locale || localStorage.getItem('locale')! },
+            params: { countryCodes: '' },
+          })
         ).data
         this.isLoadingCountryNames = false
       }
@@ -175,9 +175,12 @@ export const coa = defineStore('coa', {
         set(this.issueDetails, issueCode, {
           issueCode,
           issueDetails: (
-            await coaApi.get(
-              `${URL_PREFIX_URLS + publicationCode}/${issueNumber}`
-            )
+            await GET__coa__list__issues__details(axios, {
+              params: {
+                publicationcode: publicationCode,
+                issuenumber: issueNumber,
+              },
+            })
           ).data,
         })
       }
