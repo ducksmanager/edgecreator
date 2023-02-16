@@ -18,8 +18,10 @@
     />
   </b-modal>
 </template>
-<script lang="js">
-// middleware: ['authenticated', 'is-editor'],
+<script lang="ts">
+export default {
+  middleware: ['authenticated', 'is-editor'],
+}
 </script>
 <script setup lang="ts">
 import { computed, ref, useRouter } from '@nuxtjs/composition-api'

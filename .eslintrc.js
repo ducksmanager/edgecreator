@@ -9,6 +9,7 @@ module.exports = {
   plugins: ['prettier'],
   // add your custom rules here
   rules: {
+    'import/first': 'off',
     'no-console': 'off',
     'import/named': 'off',
     'require-await': 'off',

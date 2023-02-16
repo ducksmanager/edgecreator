@@ -128,10 +128,10 @@
     </b-row>
   </b-container>
 </template>
-<script lang="js">
-// export default {
-//   name: 'Edit',
-//   middleware: ['authenticated', 'is-editor'],
+<script lang="ts">
+export default {
+  middleware: ['authenticated', 'is-editor'],
+}
 </script>
 <script setup lang="ts">
 import { BIconCamera, BIconPencil } from 'bootstrap-vue'

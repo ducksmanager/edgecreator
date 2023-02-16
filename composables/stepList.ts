@@ -21,7 +21,7 @@ export default () => {
 
   watch(
     () => globalEvent().options,
-    (changes: { issuenumbers: string[]; stepNumber: number }) => {
+    (changes) => {
       const { issuenumbers, stepNumber, ...optionChanges } = { ...changes }
       const targetIssueNumbers = issuenumbers || editingStep().issuenumbers
       const targetStepNumber =

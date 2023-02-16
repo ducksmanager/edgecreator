@@ -16,7 +16,6 @@ import { main } from '~/stores/main'
 
 require('@uppy/core/dist/style.css')
 require('@uppy/dashboard/dist/style.css')
-const i18n = useI18n()
 
 const props = withDefaults(
   defineProps<{
@@ -39,9 +38,7 @@ const i18n = useI18n()
 const bytesUploaded = ref(0)
 
 onMounted(() => {
-  const locale = this.$i18n.locales.find(
-    ({ code }) => code === i18n.locale.value
-  ).iso
+  const locale = i18n.locale.value === 'fr' ? 'fr-FR' : 'en-US'
   const uppyTranslations = {
     'fr-FR': require('@uppy/locales/lib/fr_FR'),
     'en-US': require('@uppy/locales/lib/en_US'),
@@ -88,16 +85,19 @@ onMounted(() => {
   uppy.on('upload-progress', (data: { bytesUploaded: number }) => {
     bytesUploaded.value = data.bytesUploaded
   })
-  uppy.on('upload-success', (_, payload: { body: { filename: string } }) => {
-    if (props.photo && !props.multiple) {
-      mainStore.setPhotoUrl({
-        issuenumber: props.edge!.issuenumber,
-        filename: payload.body.filename,
-      })
-    } else {
-      mainStore.loadItems({ itemType: props.photo ? 'photos' : 'elements' })
+  uppy.on(
+    'upload-success',
+    (_: any, payload: { body: { filename: string } }) => {
+      if (props.photo && !props.multiple) {
+        mainStore.setPhotoUrl({
+          issuenumber: props.edge!.issuenumber,
+          filename: payload.body.filename,
+        })
+      } else {
+        mainStore.loadItems({ itemType: props.photo ? 'photos' : 'elements' })
+      }
     }
-  })
+  )
 })
 </script>
 

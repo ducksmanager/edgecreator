@@ -2,6 +2,10 @@ import { defineStore } from 'pinia'
 
 export const globalEvent = defineStore('globalEvent', {
   state: () => ({
-    options: {} as { [key: string]: any },
+    options: {} as {
+      issuenumbers?: string[]
+      stepNumber?: number
+      [key: string]: any
+    },
   }),
 })

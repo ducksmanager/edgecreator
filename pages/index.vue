@@ -151,9 +151,10 @@
     >
   </div>
 </template>
-
-<script lang="js">
-// middleware: 'authenticated'
+<script lang="ts">
+export default {
+  middleware: 'authenticated',
+}
 </script>
 <script setup lang="ts">
 import UploadableEdgesCarousel from 'ducksmanager/assets/js/components/UploadableEdgesCarousel.vue'

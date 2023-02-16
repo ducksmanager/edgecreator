@@ -117,8 +117,10 @@
   >
 </template>
 
-<script lang="js">
-// middleware: 'authenticated',
+<script lang="ts">
+export default {
+  middleware: 'authenticated',
+}
 </script>
 <script lang="ts" setup>
 import { nextTick, set } from 'vue'
