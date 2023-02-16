@@ -5,6 +5,7 @@ import {
   GET_CALL_EDGECREATOR_V2_MODEL__MODELIDS_STEPS,
   GET__edgecreator__v2__model__$modelIds__steps,
 } from 'ducksmanager/types/routes'
+import { ModelSteps } from 'ducksmanager/types/ModelSteps'
 import { main } from '~/stores/main'
 import { EdgeWithVersionAndStatus } from '~/composables/edgeCatalog'
 
@@ -19,15 +20,7 @@ export const edgeCatalog = defineStore('edgeCatalog', {
       }
     },
     publishedEdgesSteps: {} as {
-      [publicationcode: string]: {
-        [issuenumber: string]: {
-          [optionName: string]: {
-            stepNumber: number
-            functionName: string
-            options: { [optionName: string]: any }
-          }
-        }
-      }
+      [publicationcode: string]: ModelSteps
     },
   }),
 
@@ -60,15 +53,7 @@ export const edgeCatalog = defineStore('edgeCatalog', {
       publishedEdgesSteps,
     }: {
       publicationcode: string
-      publishedEdgesSteps: {
-        [publicationcode: string]: {
-          [issuenumber: string]: {
-            stepNumber: number
-            functionName: string
-            options: { [optionName: string]: any }
-          }
-        }
-      }
+      publishedEdgesSteps: ModelSteps
     }) {
       if (!this.publishedEdgesSteps[publicationcode]) {
         this.publishedEdgesSteps[publicationcode] = {}
@@ -90,19 +75,16 @@ export const edgeCatalog = defineStore('edgeCatalog', {
         newModelIds.length &&
         this.addPublishedEdgesSteps({
           publicationcode,
-          publishedEdgesSteps: await main()
-            .getChunkedRequestsTyped<GET_CALL_EDGECREATOR_V2_MODEL__MODELIDS_STEPS>(
+          publishedEdgesSteps:
+            await main().getChunkedRequestsTyped<GET_CALL_EDGECREATOR_V2_MODEL__MODELIDS_STEPS>(
               {
-                callFn: async (chunk) =>
+                callFn: (chunk) =>
                   GET__edgecreator__v2__model__$modelIds__steps(axios, {
                     params: { publicationCodes: chunk },
                   }),
                 valuesToChunk: newModelIds.map((modelId) => String(modelId)),
                 chunkSize: 10,
               }
-            )
-            .then((data) =>
-              data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
             ),
         })
       )
