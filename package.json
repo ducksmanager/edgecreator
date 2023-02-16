@@ -31,6 +31,7 @@
     "bootstrap": "^4.6.1",
     "bootstrap-icons": "^1.8.1",
     "bootstrap-vue": "^2.22.0",
+    "bootstrap-vue-next": "npm:bootstrap-vue@^2.22.0",
     "busboy": "^0.3.1",
     "cloudinary": "^1.29.1",
     "cookie-universal-nuxt": "^2.1.4",
