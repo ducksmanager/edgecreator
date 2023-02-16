@@ -157,8 +157,8 @@ export default {
 }
 </script>
 <script setup lang="ts">
-import UploadableEdgesCarousel from 'ducksmanager/assets/js/components/UploadableEdgesCarousel.vue'
-import Publication from 'ducksmanager/assets/js/components/Publication.vue'
+import UploadableEdgesCarousel from 'ducksmanager/src/components/UploadableEdgesCarousel.vue'
+import Publication from 'ducksmanager/src/components/Publication.vue'
 import { computed, onMounted, ref } from '@nuxtjs/composition-api'
 import axios from 'axios'
 import edgeCatalog from '~/composables/edgeCatalog'

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import { BookcaseEdge } from 'ducksmanager-api/types/BookcaseEdge'
+import { BookcaseEdge } from 'ducksmanager/types/BookcaseEdge'
 import { user } from './user'
 
 export interface BookcaseEdgeWithPopularity extends BookcaseEdge {

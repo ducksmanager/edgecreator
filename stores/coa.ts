@@ -6,7 +6,7 @@ import {
   GET__coa__list__countries__$locale,
   GET__coa__list__issues__by_publication_codes,
   GET__coa__list__publications,
-} from 'ducksmanager-api/types/routes'
+} from 'ducksmanager/types/routes'
 
 import { main } from '~/stores/main'
 

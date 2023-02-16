@@ -1,7 +1,7 @@
 import { set } from 'vue'
 import { defineStore } from 'pinia'
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
-import { Call } from 'ducksmanager-api/types/Call'
+import { Call } from 'ducksmanager/types/Call'
 import { coa } from './coa'
 
 const numericSortCollator = new Intl.Collator(undefined, {

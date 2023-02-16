@@ -1,6 +1,11 @@
 import { json } from 'body-parser'
 import ESLintPlugin from 'eslint-webpack-plugin'
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    urlParams?: Record<string, string> | undefined
+  }
+}
 export default {
   telemetry: false,
 
@@ -36,7 +41,6 @@ export default {
     '~/plugins/axios',
     { src: '~/plugins/vue-cropper', ssr: false },
     { src: '~/plugins/vue-bootstrap-typeahead', ssr: false },
-    { src: '~/plugins/backend-data', ssr: false },
   ],
   /*
    ** Nuxt.js dev-modules
@@ -90,8 +94,6 @@ export default {
     ],
     // Doc: https://bootstrap-vue.js.org
     'bootstrap-vue/nuxt',
-    // Doc: https://axios.nuxtjs.org/usage
-    '@nuxtjs/axios',
     // Doc: https://github.com/nuxt-community/dotenv-module
     '@nuxtjs/dotenv',
     // Doc: https://github.com/microcipcip/cookie-universal
@@ -122,7 +124,7 @@ export default {
     /*
      ** You can extend webpack config here
      */
-    extend(config, { isClient, isDev }) {
+    extend(config: { plugins: ESLintPlugin[] }, { isClient, isDev }: any) {
       if (isDev && isClient) {
         config.plugins.push(new ESLintPlugin())
       }

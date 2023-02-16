@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-import { GET__global_stats__user__$userIds } from 'ducksmanager-api/types/routes'
+import { GET__global_stats__user__$userIds } from 'ducksmanager/types/routes'
 
 export const user = defineStore('user', {
   state: () => ({

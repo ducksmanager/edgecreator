@@ -1,6 +1,6 @@
 <template>
   <span>
-    <Issue
+    <issue
       :publicationcode="publicationcode"
       :publicationname="publicationNames[publicationcode]"
       :issuenumber="issuenumber"
@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import Issue from 'ducksmanager/assets/js/components/Issue.vue'
+import Issue from 'ducksmanager/src/components/Issue.vue'
 import { computed } from '@nuxtjs/composition-api'
 import { coa } from '~/stores/coa'
 

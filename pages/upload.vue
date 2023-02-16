@@ -124,7 +124,7 @@ export default {
 </script>
 <script lang="ts" setup>
 import { nextTick, set } from 'vue'
-import Issue from 'ducksmanager/assets/js/components/Issue.vue'
+import Issue from 'ducksmanager/src/components/Issue.vue'
 import { useI18n } from 'nuxt-i18n-composable'
 import { computed, ref } from '@nuxtjs/composition-api'
 import axios from 'axios'

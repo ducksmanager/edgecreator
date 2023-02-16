@@ -266,7 +266,7 @@ import {
   BIconHouse,
   BIconInfoCircleFill,
 } from 'bootstrap-vue'
-import Issue from 'ducksmanager/assets/js/components/Issue.vue'
+import Issue from 'ducksmanager/src/components/Issue.vue'
 import { computed, onMounted, ref } from '@nuxtjs/composition-api'
 import MultipleTargetOptions from './MultipleTargetOptions'
 import { ui } from '~/stores/ui'
