@@ -1,6 +1,7 @@
 import { set } from 'vue'
 import { defineStore } from 'pinia'
-import axios, { AxiosInstance } from 'axios'
+import axios, { AxiosInstance, AxiosResponse } from 'axios'
+import { Call } from 'ducksmanager-api/types/Call'
 import { coa } from './coa'
 
 const numericSortCollator = new Intl.Collator(undefined, {
@@ -219,5 +220,37 @@ export const main = defineStore('main', {
           Promise.resolve([])
         )
       ),
+
+    async getChunkedRequestsTyped<MyCall extends Call<unknown, unknown>>({
+      callFn,
+      valuesToChunk,
+      chunkSize,
+    }: {
+      callFn: (chunk: string) => Promise<AxiosResponse<MyCall['resBody']>>
+      valuesToChunk: string[]
+      chunkSize: number
+      chunkOnQueryParam?: boolean
+      parameterName?: string
+    }): Promise<MyCall['resBody']> {
+      const slices = Array.from(
+        { length: Math.ceil(valuesToChunk.length / chunkSize) },
+        (_, i) => valuesToChunk.slice(i * chunkSize, i * chunkSize + chunkSize)
+      )
+      let acc: MyCall['resBody'] = (await callFn(slices[0].join(','))).data
+      for (const slice of slices.slice(1)) {
+        acc = Array.isArray(acc)
+          ? [
+              ...(acc as never[]),
+              ...((await callFn(slice.join(','))).data as never[]),
+            ]
+          : {
+              ...(acc as { [key: string]: never }),
+              ...((await callFn(slice.join(','))).data as {
+                [key: string]: never
+              }),
+            }
+      }
+      return acc
+    },
   },
 })

@@ -1,23 +1,23 @@
-import { set } from 'vue'
 import axios from 'axios'
 import { defineStore } from 'pinia'
 import {
+  GET_CALL_COA_LIST_ISSUES_BY_PUBLICATION_CODES,
+  GET_CALL_COA_LIST_PUBLICATIONS,
   GET__coa__list__countries__$locale,
-  GET__coa__list__issues__details,
+  GET__coa__list__issues__by_publication_codes,
+  GET__coa__list__publications,
 } from 'ducksmanager-api/types/routes'
+
 import { main } from '~/stores/main'
 
 const coaApi = axios.create({})
 
 const URL_PREFIX_PUBLICATIONS = '/api/coa/list/publications/'
-const URL_PREFIX_ISSUES = '/api/coa/list/issues/'
-const URL_PREFIX_AUTHORS = '/api/coa/authorsfullnames/'
-const URL_ISSUE_COUNTS = '/api/coa/list/issues/count'
 
 export const coa = defineStore('coa', {
   state: () => ({
     countryNames: null as { [countrycode: string]: string } | null,
-    publicationNames: {} as { [publicationcode: string]: string },
+    publicationNames: {} as { [publicationcode: string]: string | null },
     publicationNamesFullCountries: [] as string[],
     personNames: null as { [personcode: string]: string } | null,
     issueNumbers: {} as { [publicationcode: string]: string[] },
@@ -28,21 +28,12 @@ export const coa = defineStore('coa', {
 
   actions: {
     addPublicationNames(publicationNames: {
-      [publicationcode: string]: string
+      [publicationcode: string]: string | null
     }) {
       this.publicationNames = {
         ...this.publicationNames,
         ...publicationNames,
       }
-    },
-    setPersonNames(personNames: { [personcode: string]: string }) {
-      this.personNames = Object.keys(personNames).reduce(
-        (acc, personCode) => ({
-          ...acc,
-          [personCode]: personNames[personCode],
-        }),
-        {}
-      )
     },
     addIssueNumbers(issueNumbers: { [publicationcode: string]: string[] }) {
       this.issueNumbers = { ...this.issueNumbers, ...issueNumbers }
@@ -64,24 +55,22 @@ export const coa = defineStore('coa', {
       const newPublicationCodes = [
         ...new Set(
           publicationCodes.filter(
-            (publicationCode) =>
-              !Object.keys(this.publicationNames).includes(publicationCode)
+            (publicationcode) =>
+              !Object.keys(this.publicationNames).includes(publicationcode)
           )
         ),
       ]
       return (
         newPublicationCodes.length &&
         this.addPublicationNames(
-          await main()
-            .getChunkedRequests({
-              api: coaApi,
-              url: URL_PREFIX_PUBLICATIONS,
-              parametersToChunk: newPublicationCodes,
-              chunkSize: 10,
-            })
-            .then((data) =>
-              data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
-            )
+          await main().getChunkedRequestsTyped<GET_CALL_COA_LIST_PUBLICATIONS>({
+            callFn: (chunk) =>
+              GET__coa__list__publications(coaApi, {
+                params: { publicationCodes: chunk },
+              }),
+            valuesToChunk: newPublicationCodes,
+            chunkSize: 20,
+          })
         )
       )
     },
@@ -102,87 +91,41 @@ export const coa = defineStore('coa', {
           ]
         })
     },
-    async fetchPersonNames(personCodes: string[]) {
-      const newPersonNames = [
-        ...new Set(
-          personCodes.filter(
-            (personCode) =>
-              !Object.keys(this.personNames || {}).includes(personCode)
-          )
-        ),
-      ]
-      const data = (
-        await main().getChunkedRequests({
-          api: coaApi,
-          url: URL_PREFIX_AUTHORS,
-          parametersToChunk: newPersonNames,
-          chunkSize: 10,
-        })
-      ).reduce((acc, result) => ({ ...acc, ...result.data }), {})
-      return (
-        newPersonNames.length &&
-        this.setPersonNames({
-          ...(this.personNames || {}),
-          ...data,
-        })
-      )
-    },
 
-    async fetchIssueNumbers(publicationCodes: string[]) {
+    fetchIssueNumbers: async function (publicationCodes: string[]) {
       const newPublicationCodes = [
         ...new Set(
           publicationCodes.filter(
-            (publicationCode) =>
-              !Object.keys(this.issueNumbers || {}).includes(publicationCode)
+            (publicationcode) =>
+              !Object.keys(this.issueNumbers || {}).includes(publicationcode)
           )
         ),
       ]
-      const data = (
-        await main().getChunkedRequests({
-          api: coaApi,
-          url: URL_PREFIX_ISSUES,
-          parametersToChunk: newPublicationCodes,
-          chunkSize: 1,
-        })
-      ).reduce(
-        (acc, result) => ({
-          ...acc,
-          [result.config.url.replace(URL_PREFIX_ISSUES, '')]: result.data.map(
-            (issueNumber: string) => issueNumber.replace(/ /g, '')
-          ),
-        }),
-        {}
-      )
+      if (newPublicationCodes.length) {
+        const data =
+          await main().getChunkedRequestsTyped<GET_CALL_COA_LIST_ISSUES_BY_PUBLICATION_CODES>(
+            {
+              callFn: async (chunk) =>
+                GET__coa__list__issues__by_publication_codes(coaApi, {
+                  params: { publicationCodes: chunk },
+                }),
+              valuesToChunk: newPublicationCodes,
+              chunkSize: 50,
+            }
+          )
 
-      return newPublicationCodes.length && this.addIssueNumbers(data)
-    },
-
-    async fetchIssueCounts() {
-      if (!this.issueCounts) {
-        this.issueCounts = (await coaApi.get(URL_ISSUE_COUNTS)).data
-      }
-    },
-
-    async fetchIssueUrls({
-      publicationCode,
-      issueNumber,
-    }: {
-      publicationCode: string
-      issueNumber: string
-    }) {
-      const issueCode = `${publicationCode} ${issueNumber}`
-      if (!this.issueDetails[issueCode]) {
-        set(this.issueDetails, issueCode, {
-          issueCode,
-          issueDetails: (
-            await GET__coa__list__issues__details(axios, {
-              params: {
-                publicationcode: publicationCode,
-                issuenumber: issueNumber,
-              },
-            })
-          ).data,
-        })
+        this.addIssueNumbers(
+          data.reduce(
+            (acc, issue) => ({
+              ...acc,
+              [issue.publicationcode]: [
+                ...(acc[issue.publicationcode] || []),
+                issue.issuenumber,
+              ],
+            }),
+            {} as typeof this.issueNumbers
+          )
+        )
       }
     },
   },

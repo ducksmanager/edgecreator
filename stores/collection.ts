@@ -1,51 +1,51 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { BookcaseEdge } from 'ducksmanager-api/types/BookcaseEdge'
 import { user } from './user'
 
-type SimpleIssue = {
-  countryCode: string
-  magazineCode: string
-  issueNumber: string
+export interface BookcaseEdgeWithPopularity extends BookcaseEdge {
+  publicationcode: string
+  issueCode: string
+  popularity: number | null
 }
-
-type SimpleIssueWithPopularity = SimpleIssue & { popularity: number | null }
-
 export const collection = defineStore('collectionEC', {
   state: () => ({
-    bookcase: null as SimpleIssue[] | null,
+    bookcase: null as BookcaseEdge[] | null,
     popularIssuesInCollection: null,
   }),
 
   getters: {
     isSharedBookcase: () => false,
 
-    bookcaseWithPopularities: ({
-      bookcase,
-      isSharedBookcase,
-      popularIssuesInCollection,
-    }): SimpleIssueWithPopularity[] | undefined | null =>
-      (isSharedBookcase ? true : popularIssuesInCollection) &&
-      bookcase?.map((issue) => {
-        const publicationCode = `${issue.countryCode}/${issue.magazineCode}`
-        const issueCode = `${publicationCode} ${issue.issueNumber}`
-        return {
-          ...issue,
-          publicationCode,
-          issueCode,
-          popularity: isSharedBookcase
-            ? null
-            : popularIssuesInCollection![issueCode] || 0,
-        }
-      }),
+    bookcaseWithPopularities(): BookcaseEdgeWithPopularity[] | null {
+      const isSharedBookcase = this.isSharedBookcase
+      const popularIssuesInCollection = this.popularIssuesInCollection
+      return (
+        ((isSharedBookcase ? true : popularIssuesInCollection) &&
+          this.bookcase?.map((issue) => {
+            const publicationcode = `${issue.countryCode}/${issue.magazineCode}`
+            const issueCode = `${publicationcode} ${issue.issuenumber}`
+            return {
+              ...issue,
+              publicationcode,
+              issueCode,
+              popularity: isSharedBookcase
+                ? null
+                : popularIssuesInCollection?.[issueCode] || 0,
+            }
+          })) ||
+        null
+      )
+    },
 
-    popularIssuesInCollectionWithoutEdge: ({ bookcaseWithPopularities }) =>
-      bookcaseWithPopularities &&
-      bookcaseWithPopularities
-        .filter(({ edgeId, popularity }) => !edgeId && popularity > 0)
+    popularIssuesInCollectionWithoutEdge() {
+      return this.bookcaseWithPopularities
+        ?.filter(({ edgeId, popularity }) => !edgeId && popularity > 0)
         .sort(
           ({ popularity: popularity1 }, { popularity: popularity2 }) =>
             popularity2 - popularity1
-        ),
+        )
+    },
   },
 
   actions: {

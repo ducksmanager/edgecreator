@@ -69,11 +69,11 @@
             :ref="`${contributionType}-typeahead`"
             :data="
               userStore.allUsers.filter(
-                (user) => !isContributor(user, contributionType)
+                (contributor) => !isContributor(contributor, contributionType)
               )
             "
             :serializer="({ username }) => username"
-            :placeholder="$t('Enter a user name')"
+            :placeholder="$t('Enter a user name').toString()"
             :min-matching-chars="0"
             @hit="
               addContributorAllIssues($event, contributionType)
@@ -82,21 +82,21 @@
           />
           <ul>
             <li
-              v-for="user in getContributors(contributionType)"
-              :key="user.username"
+              v-for="contributor in getContributors(contributionType)"
+              :key="contributor.username"
             >
-              {{ user.username }}
+              {{ contributor.username }}
               <b-icon-x-square-fill
                 v-if="
                   !(
-                    user.username === userStore.username &&
+                    contributor.username === userStore.username &&
                     contributionType === 'designers'
                   )
                 "
                 @click="
-                  removeContributor({
+                  mainStore.removeContributor({
                     contributionType,
-                    userToRemove: user,
+                    userToRemove: contributor,
                   })
                 "
               />
