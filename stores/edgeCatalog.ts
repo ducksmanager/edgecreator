@@ -1,10 +1,12 @@
 import { set } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import {
+  GET_CALL_EDGECREATOR_V2_MODEL__MODELIDS_STEPS,
+  GET__edgecreator__v2__model__$modelIds__steps,
+} from 'ducksmanager/types/routes'
 import { main } from '~/stores/main'
 import { EdgeWithVersionAndStatus } from '~/composables/edgeCatalog'
-
-const URL_PREFIX_STEPS = '/api/edgecreator/v2/model/'
 
 export const edgeCatalog = defineStore('edgeCatalog', {
   state: () => ({
@@ -89,13 +91,16 @@ export const edgeCatalog = defineStore('edgeCatalog', {
         this.addPublishedEdgesSteps({
           publicationcode,
           publishedEdgesSteps: await main()
-            .getChunkedRequests({
-              api: axios.create({}),
-              url: URL_PREFIX_STEPS,
-              parametersToChunk: newModelIds,
-              chunkSize: 10,
-              suffix: '/steps',
-            })
+            .getChunkedRequestsTyped<GET_CALL_EDGECREATOR_V2_MODEL__MODELIDS_STEPS>(
+              {
+                callFn: async (chunk) =>
+                  GET__edgecreator__v2__model__$modelIds__steps(axios, {
+                    params: { publicationCodes: chunk },
+                  }),
+                valuesToChunk: newModelIds.map((modelId) => String(modelId)),
+                chunkSize: 10,
+              }
+            )
             .then((data) =>
               data.reduce((acc, result) => ({ ...acc, ...result.data }), {})
             ),

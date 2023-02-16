@@ -35,7 +35,7 @@
     "cloudinary": "^1.29.1",
     "cookie-universal-nuxt": "^2.1.4",
     "cropperjs": "^1.5.9",
-    "ducksmanager": "^0.0.13",
+    "ducksmanager": "^0.0.14",
     "http-proxy": "^1.18.1",
     "image-size": "^1.0.1",
     "interactjs": "^1.10.11",

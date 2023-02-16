@@ -39,11 +39,13 @@ export const collection = defineStore('collectionEC', {
     },
 
     popularIssuesInCollectionWithoutEdge() {
-      return this.bookcaseWithPopularities
-        ?.filter(({ edgeId, popularity }) => !edgeId && popularity > 0)
+      return this.bookcaseWithPopularities()
+        ?.filter(
+          ({ edgeId, popularity }) => !edgeId && popularity && popularity > 0
+        )
         .sort(
           ({ popularity: popularity1 }, { popularity: popularity2 }) =>
-            popularity2 - popularity1
+            popularity2! - popularity1!
         )
     },
   },
