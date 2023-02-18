@@ -1,6 +1,7 @@
-import { computed, onMounted, ref, useContext } from '@nuxtjs/composition-api'
+import { computed, onMounted, ref } from '@nuxtjs/composition-api'
 import axios from 'axios'
 import { NuxtCookies } from 'cookie-universal-nuxt'
+import { useNuxtApp } from '@nuxt/bridge/dist/runtime'
 import { edgeCatalog } from '~/stores/edgeCatalog'
 import { coa } from '~/stores/coa'
 import { user } from '~/stores/user'
@@ -39,7 +40,7 @@ const {
   $cookies: cookies,
 }: {
   $cookies: NuxtCookies
-} = useContext() as any
+} = useNuxtApp() as any
 
 export default () => {
   const isCatalogLoaded = ref(false)

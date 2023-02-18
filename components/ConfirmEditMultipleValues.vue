@@ -14,8 +14,6 @@
   <span v-else><slot /></span>
 </template>
 <script setup lang="ts">
-import { ref } from '@nuxtjs/composition-api'
-
 defineProps<{
   values: any[]
 }>()

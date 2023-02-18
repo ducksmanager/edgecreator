@@ -167,7 +167,7 @@ const { loadModel } = modelLoad()
 const route = useRoute()
 
 const error = ref(null as string | null)
-useFetch(async () => await user().fetchAllUsers())
+useLazyAsyncData('users', async () => await user().fetchAllUsers())
 
 const editingDimensions = computed(() =>
   editingStep().issuenumbers.reduce(

@@ -83,7 +83,6 @@
   </svg>
 </template>
 <script setup lang="ts">
-import { computed, ref } from '@nuxtjs/composition-api'
 import { ui } from '~/stores/ui'
 import { hoveredStep } from '~/stores/hoveredStep'
 import { editingStep } from '~/stores/editingStep'

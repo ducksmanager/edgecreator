@@ -1,11 +1,10 @@
-import { useRoute, watch } from '@nuxtjs/composition-api'
 import { useToast } from '~/composables/useToast'
 
 const route = useRoute()
 
 export default () => {
   watch(
-    () => route.value.hash,
+    () => route.hash,
     (newValue) => {
       const toastError = (message: string) => {
         useToast().toast(message, {

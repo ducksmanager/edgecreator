@@ -31,8 +31,6 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from '@nuxtjs/composition-api'
-
 const props = withDefaults(
   defineProps<{
     width?: number

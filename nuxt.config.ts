@@ -1,4 +1,5 @@
 import { json } from 'body-parser'
+import { defineNuxtConfig } from '@nuxt/bridge'
 import ESLintPlugin from 'eslint-webpack-plugin'
 
 declare module 'axios' {
@@ -6,7 +7,7 @@ declare module 'axios' {
     urlParams?: Record<string, string> | undefined
   }
 }
-export default {
+export default defineNuxtConfig({
   telemetry: false,
 
   /*
@@ -42,55 +43,40 @@ export default {
     { src: '~/plugins/vue-cropper', ssr: false },
     { src: '~/plugins/vue-bootstrap-typeahead', ssr: false },
   ],
-  /*
-   ** Nuxt.js dev-modules
-   */
-  buildModules: [
-    '@nuxtjs/dotenv',
 
-    // Doc: https://github.com/nuxt-community/eslint-module
-    '@nuxtjs/eslint-module',
-
-    '@nuxt/typescript-build',
-
-    // Nuxt 2 only:
-    // https://composition-api.nuxtjs.org/getting-started/setup#quick-start
-    '@nuxtjs/composition-api/module',
-    '@pinia/nuxt',
-
-    // https://github.com/nuxt-community/localforage-module
-    '@nuxtjs/localforage',
-  ],
   /*
    ** Nuxt.js modules
    */
   modules: [
-    // Doc: https://github.com/Developmint/nuxt-svg-loader#readme
-    'nuxt-svg-loader',
+    // // Doc: https://github.com/nuxt-community/eslint-module
+    // '@nuxtjs/eslint-module',
+
+    '@pinia/nuxt',
+
     // Doc: https://nuxt-community.github.io/nuxt-i18n/
     [
       '@nuxtjs/i18n',
-      {
-        lazy: true,
-        langDir: 'locales/',
-        defaultLocale: 'fr',
-        fallbackLocale: 'en',
-        formatFallbackMessages: true,
-        locales: [
-          {
-            code: 'fr',
-            name: 'Français',
-            iso: 'fr-FR',
-            file: 'fr-FR.json',
-          },
-          {
-            code: 'en',
-            name: 'English',
-            iso: 'en-US',
-            file: 'en-US.ts',
-          },
-        ],
-      },
+      // {
+      //   lazy: true,
+      //   langDir: 'locales/',
+      //   defaultLocale: 'fr',
+      //   fallbackLocale: 'en',
+      //   formatFallbackMessages: true,
+      //   locales: [
+      //     {
+      //       code: 'fr',
+      //       name: 'Français',
+      //       iso: 'fr-FR',
+      //       file: 'fr-FR.json',
+      //     },
+      //     {
+      //       code: 'en',
+      //       name: 'English',
+      //       iso: 'en-US',
+      //       file: 'en-US.ts',
+      //     },
+      //   ],
+      // },
     ],
     // Doc: https://bootstrap-vue.js.org
     'bootstrap-vue/nuxt',
@@ -182,4 +168,4 @@ export default {
       handler: '~/api/edge-proxy.js',
     },
   ],
-}
+})
