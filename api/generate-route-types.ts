@@ -1,6 +1,18 @@
+import parser from "@babel/parser";
+import {
+  Identifier,
+  TypeAnnotation,
+  TypeParameterDeclaration,
+  VariableDeclaration,
+} from "@babel/types";
+import { ArrowFunctionExpression } from "@babel/types";
+import { RestElement } from "@babel/types";
+import { ArrayExpression } from "@babel/types";
+import { InterfaceDeclaration } from "@babel/types";
+import { ExportNamedDeclaration, VariableDeclarator } from "@babel/types";
 import express from "express";
 import { router } from "express-file-routing";
-import { readdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs";
 
 const app = express();
 app.use("/", router({ directory: `${process.cwd()}/routes` }));
@@ -40,11 +52,21 @@ imports.push(
     .filter((file) => file.endsWith(".ts") && /^[A-Z]/.test(file[0]))
     .map(
       (file) =>
-        `import { ${[
-          ...readFileSync(`../types/${file}`)
-            .toString()
-            .matchAll(/(?:(?<=export type )|(?<=export interface ))\w+/g)!,
-        ].join(", ")} } from "./${file.replace(/\.ts$/, "")}";`
+        `import { ${(
+          parser
+            .parse(readFileSync(`../types/${file}`).toString(), {
+              sourceType: "unambiguous",
+              plugins: ["typescript"],
+            })
+            .program.body.filter(
+              ({ declaration, type }) =>
+                type === "ExportNamedDeclaration" &&
+                declaration?.type !== "ExportDefaultDeclaration"
+            ) as ExportNamedDeclaration[]
+        )
+          // eslint-disable-next-line
+          .map((node) => (node.declaration as InterfaceDeclaration)?.id.name)
+          .join(", ")} } from "./${file.replace(/\.ts$/, "")}";`
     )
     .join("\n")
 );
@@ -52,37 +74,73 @@ const types: string[] = [];
 
 let routeClassList = {} as Record<string, string>;
 routes.forEach((route) => {
+  const routePath = route.path as string;
+  const routeBasePath = `routes/${routePath.replace(/^\//, "")}`;
+  const routeFile = (
+    existsSync(`${routeBasePath}/index.ts`)
+      ? readFileSync(`${routeBasePath}/index.ts`)
+      : readFileSync(`${routeBasePath}.ts`)
+  ).toString();
+  const endpoints: Record<string, string> = (
+    parser
+      .parse(routeFile, {
+        sourceType: "unambiguous",
+        plugins: ["typescript"],
+      })
+      .program.body.filter(
+        ({ type }) => type === "ExportNamedDeclaration"
+      ) as ExportNamedDeclaration[]
+  )
+    .map(
+      (declaration) =>
+        (declaration as VariableDeclaration).declaration.declarations[0]
+    )
+    .filter(
+      ({ init }) =>
+        init?.type === "ArrowFunctionExpression" ||
+        (init?.type === "ArrayExpression" &&
+          init?.elements.some(({ type }) => type === "ArrowFunctionExpression"))
+    )
+    .map((declaration: VariableDeclarator) => {
+      return {
+        method: (declaration.id as Identifier).name,
+        contract: (
+          (
+            (
+              ((declaration.init as ArrowFunctionExpression)
+                .params?.[0] as RestElement) ||
+              ((declaration.init as ArrayExpression).elements.find(
+                ({ type }) => type === "ArrowFunctionExpression"
+              )!.params[0] as RestElement)
+            ).typeAnnotation as TypeAnnotation
+          ).typeAnnotation.typeParameters as TypeParameterDeclaration
+        ).params[0].loc as unknown as {
+          start: { index: number };
+          end: { index: number };
+        },
+      };
+    })
+    .reduce(
+      (acc, { method, contract }) => ({
+        ...acc,
+        [method]: routeFile.substring(contract.start.index, contract.end.index),
+      }),
+      {}
+    );
   routeClassList = Object.keys(route.methods)
     .filter((method) => ["get", "post", "delete", "put"].includes(method))
-    .reduce((acc, method) => {
-      const realMethod = method === "delete" ? "del" : method;
-      const routePathWithMethod = `${method.toUpperCase()} ${
-        route.path as string
-      }`;
-
-      let routeFile;
-      const routeBasePath = `routes/${(route.path as string).replace(
-        /^\//,
-        ""
-      )}`;
-      try {
-        routeFile = readFileSync(`${routeBasePath}/index.ts`);
-      } catch (e) {
-        routeFile = readFileSync(`${routeBasePath}.ts`);
-      }
-      const callType = new RegExp(
-        `export const ${realMethod} =.+?ExpressCall<( *.+?)>[ \\n]*\\) =>`,
-        "gms"
-      ).exec(routeFile.toString())![1];
-
-      acc[
-        routePathWithMethod
-      ] = ` extends ContractWithMethodAndUrl<${callType}> {
+    .reduce(
+      (acc, method) => ({
+        ...acc,
+        [`${method.toUpperCase()} ${routePath}`]: ` extends ContractWithMethodAndUrl<${
+          endpoints[method === "delete" ? "del" : method]
+        }> {
             static readonly method = "${method}";
-            static readonly url = "${route.path as string}";
-        }`;
-      return acc;
-    }, routeClassList);
+            static readonly url = "${routePath}";
+        }`,
+      }),
+      routeClassList
+    );
 });
 writeFileSync(
   "../types/routes.ts",
