@@ -1,22 +1,38 @@
-version: '2'
+version: '2.4'
 services:
-  web:
-    container_name: edgecreator-v3
-    image: ghcr.io/bperel/edgecreator
+  app:
+    container_name: edgecreator-app
+    image: ghcr.io/bperel/edgecreator-app
+    depends_on:
+      - api
+    restart: always
+    networks:
+      - public-network
+      - ec2-network
+
+  api:
+    container_name: edgecreator-api
+    image: ghcr.io/bperel/edgecreator-api
+    restart: always
     volumes:
       - '../edges:/home/edges'
-    ports:
-      - 3000:3000
     networks:
-      dm-server_front-network:
-        aliases:
-          - edgecreator-v3
-      public-network:
-        aliases:
-          - edgecreator-v3
+      - public-network
+      - ec2-network
+      - dm-server_db-network
+
+  sentry-relay:
+    image: getsentry/relay
+    restart: always
+    container_name: sentry-edgecreator
+    volumes:
+      - ./config/sentry-relay:/work/.relay
+    networks:
+      - public-network
 
 networks:
+  ec2-network:
   public-network:
     external: true
-  dm-server_front-network:
+  dm-server_db-network:
     external: true
