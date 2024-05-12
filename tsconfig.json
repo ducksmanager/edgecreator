@@ -1,33 +1,43 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "lib": [
-      "ESNext",
-      "ESNext.AsyncIterable",
-      "DOM"
-    ],
-    "esModuleInterop": true,
-    "allowJs": true,
-    "sourceMap": true,
-    "strict": true,
-    "noEmit": true,
     "baseUrl": ".",
+    "module": "ESNext",
+    "target": "es2020",
+    "lib": ["dom", "dom.iterable", "ESNext"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "preserveWatchOutput": true,
     "paths": {
-      "~/*": [
-        "./*"
+      "~/*": ["src/*"],
+      "~dm-services/*": ["../../packages/api/services/*"],
+      "~dm-types/*": ["../../packages/types/*"],
+      "~prisma-clients/*": ["../../packages/prisma-clients/*"],
+      "~socket.io-client-services/*": ["../../packages/socket.io-client-services/*"],
+      "~socket.io-services/*": ["../../packages/socket.io-services/*"],
+      "~types/*": [
+        "types/*"
       ],
-      "@/*": [
-        "./*"
-      ]
     },
     "types": [
-      "@types/node",
-      "@nuxt/types"
+      "vite/client",
+      "vite-plugin-pages/client",
+      "unplugin-icons/types/vue",
+      "vite-plugin-vue-layouts/client"
     ]
   },
-  "exclude": [
-    "node_modules"
-  ]
+  "include": [
+    "types/*.ts",
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "auto-imports.d.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
 }
