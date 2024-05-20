@@ -80,9 +80,7 @@ meta:
               <issue
                 no-wrap
                 :publicationcode="crop.publicationCode"
-                :publicationname="
-                  coaStore.publicationNames[crop.publicationCode]
-                "
+                :publicationname="publicationNames[crop.publicationCode]"
                 :issuenumber="crop.issueNumber"
             /></template>
             <img
@@ -135,35 +133,39 @@ import "cropperjs/dist/cropper.css";
 
 import { useCookies } from "@vueuse/integrations/useCookies";
 import { useToast } from "bootstrap-vue-next";
+import type Cropper from "cropperjs";
 import { nextTick } from "vue";
-import { CropperData } from "vue-cropperjs";
+import type { CropperData } from "vue-cropperjs";
 import { useI18n } from "vue-i18n";
 
+import { edgecreatorSocketInjectionKey } from "~/composables/useEdgecreatorSocket";
 import useSaveEdge from "~/composables/useSaveEdge";
-import { api } from "~/stores/api";
-import { coa } from "~/stores/coa";
-import { Crop } from "~types/Crop";
-import { ModelContributor } from "~types/ModelContributor";
-import { POST__fs__upload_base64 } from "~types/routes";
-
-import { call } from "../../axios-helper";
+import type { Crop } from "~types/Crop";
+import type { ModelContributor } from "~types/ModelContributor";
+import { stores as webStores } from "~web";
 
 const i18n = useI18n();
 
+const {
+  upload: { services: uploadServices },
+} = injectLocal(edgecreatorSocketInjectionKey)!;
+
 const { saveEdgeSvg } = useSaveEdge();
-const coaStore = coa();
 
 type CropWithData = Crop & {
   data: CropperData;
   filename?: string;
   url: string;
   sent: boolean;
+  error?: string;
 };
 
-const currentCrop = ref(null as CropWithData | null);
-const crops = ref([] as CropWithData[]);
-const uploadedImageData = ref(null as { url: string } | null);
-const cropper = ref(null as any | null);
+const currentCrop = ref<CropWithData | null>(null);
+const crops = ref<CropWithData[]>([]);
+const uploadedImageData = ref<{ url: string } | null>(null);
+const cropper = ref<Cropper | null>(null);
+
+const publicationNames = computed(() => webStores.coa().publicationNames);
 
 const initialContributors = computed(
   (): Omit<ModelContributor, "issuenumber">[] => [
@@ -177,8 +179,8 @@ const initialContributors = computed(
 const addCrop = () => {
   const data = cropper.value!.getData() as CropperData;
   if (data.height < data.width) {
-    useToast()!.show(
-      {
+    useToast().show!({
+      props: {
         body: i18n
           .t(
             `The width of your selection is bigger than its height! Make sure that the edges appear vertically on the photo.`,
@@ -186,16 +188,12 @@ const addCrop = () => {
           .toString(),
         title: i18n.t("Error").toString(),
       },
-      {
-        delay: 5000,
-        autoHide: true,
-      },
-    );
+    });
   } else {
     crops.value.push({
       ...currentCrop.value!,
       data,
-      url: (cropper.value.getCroppedCanvas() as HTMLCanvasElement).toDataURL(
+      url: (cropper.value!.getCroppedCanvas() as HTMLCanvasElement).toDataURL(
         "image/jpeg",
       ),
     });
@@ -206,18 +204,13 @@ const uploadAll = async () => {
   for (const crop of crops.value.filter(({ sent }) => !sent)) {
     const [country, magazine] = crop.publicationCode.split("/");
     crop.filename = (
-      await call(
-        api().edgeCreatorApi,
-        new POST__fs__upload_base64({
-          reqBody: {
-            country,
-            magazine,
-            issuenumber: crop.issueNumber,
-            data: crop.url,
-          },
-        }),
-      )
-    ).data.fileName;
+      await uploadServices.uploadFromBase64({
+        country,
+        magazine,
+        issuenumber: crop.issueNumber,
+        data: crop.url,
+      })
+    ).fileName;
     await nextTick().then(async () => {
       const response = await saveEdgeSvg(
         country,
@@ -228,7 +221,7 @@ const uploadAll = async () => {
           issuenumber: crop.issueNumber,
         })),
       );
-      const isSuccess = response.paths.svgPath;
+      const isSuccess = response!.paths.svgPath;
       crop.sent = !!isSuccess;
     });
   }

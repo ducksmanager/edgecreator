@@ -1,15 +1,14 @@
-import { api } from "~/stores/api";
-import { EdgeDimensions } from "~/types/EdgeDimensions";
-import { LegacyComponent } from "~/types/LegacyComponent";
-import { StepOptions } from "~/types/StepOptions";
+import type { EdgeDimensions } from "~/types/EdgeDimensions";
+import type { LegacyComponent } from "~/types/LegacyComponent";
+import type { StepOptions } from "~/types/StepOptions";
 
-import { call } from "../../axios-helper";
+import { edgecreatorSocketInjectionKey } from "./useEdgecreatorSocket";
 
 const { resolveIssueNumberTemplate } = useTextTemplate();
 
 const componentToHex = (c: number) => {
   const hex = c.toString(16);
-  return hex.length === 1 ? "0" + hex : hex;
+  return hex.length === 1 ? `0${hex}` : hex;
 };
 const rgbToHex = (color: string) => {
   if (!color.includes(",")) {
@@ -20,6 +19,10 @@ const rgbToHex = (color: string) => {
 };
 
 export default () => {
+  const {
+    imageInfo: { services: imageInfoServices },
+  } = injectLocal(edgecreatorSocketInjectionKey)!;
+
   const getImageSize = (url: string): Promise<EdgeDimensions> =>
     new Promise((resolve, reject) => {
       const img = new Image();
@@ -129,18 +132,19 @@ export default () => {
             issuenumber,
           )}`;
 
-          const image = calculateBase64
-            ? (
-                await call(
-                  api().edgeCreatorApi,
-                  new GET__fs__base64({
-                    query: {
-                      targetUrl: elementPath,
-                    },
-                  }),
-                )
-              ).data
-            : { dimensions: await getImageSize(`/edges/${elementPath}`) };
+          let image;
+          if (calculateBase64) {
+            image = await imageInfoServices.getImageInfo(elementPath);
+            if ("errorDetails" in image) {
+              console.error(
+                `Image could not be retrieved : ${image.errorDetails}`,
+              );
+              return;
+            }
+            image = image.results!;
+          } else {
+            image = { dimensions: await getImageSize(`/edges/${elementPath}`) };
+          }
 
           const embeddedImageHeight =
             edgeDimensions.width *

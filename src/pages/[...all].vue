@@ -18,7 +18,7 @@ meta:
         <b-alert variant="info" :model-value="true">
           <template v-if="mostPopularIssuesInCollectionWithoutEdge?.length">
             <uploadable-edges-carousel
-              :user-points="collectionStore.userPhotographerPoints"
+              :user-points="userPhotographerPoints"
               :issues="mostPopularIssuesInCollectionWithoutEdge"
               :publication-names="publicationNames"
             >
@@ -26,7 +26,7 @@ meta:
                 {{
                   $t(
                     "Send us photos of magazine edges that you own and earn up to {0} Edge photographer points per edge!",
-                    [mostPopularIssuesInCollectionWithoutEdge[0].popularity],
+                    [mostPopularIssuesInCollectionWithoutEdge[0].popularity]
                   )
                 }}
               </template>
@@ -40,7 +40,7 @@ meta:
           </template>
           <uploadable-edges-carousel
             v-if="mostWantedEdges"
-            :user-points="collectionStore.userPhotographerPoints"
+            :user-points="userPhotographerPoints"
             :issues="mostWantedEdges"
             :publication-names="publicationNames"
           >
@@ -48,7 +48,7 @@ meta:
               {{
                 $t(
                   "Send us photos of magazine edges that you find on the Internet and earn up to {0} Edge photographer points per edge!",
-                  [mostWantedEdges[0].popularity],
+                  [mostWantedEdges[0].popularity]
                 )
               }}
             </template>
@@ -77,7 +77,7 @@ meta:
         <b-container v-if="Object.keys(edgesByStatus[status]).length">
           <template
             v-for="[publicationcode, edges] in Object.entries(
-              edgesByStatus[status],
+              edgesByStatus[status]
             )"
             :key="`${status}-${publicationcode}`"
           >
@@ -128,7 +128,7 @@ meta:
                                 edge.magazine,
                                 edge.issuenumber,
                                 'svg',
-                                false,
+                                false
                               )
                             : undefined
                         "
@@ -159,7 +159,7 @@ meta:
       class="position-fixed text-center w-100 bg-light p-2"
       >{{
         $t(
-          "EdgeCreator is a tool allowing to create edges for the DucksManager bookcase.",
+          "EdgeCreator is a tool allowing to create edges for the DucksManager bookcase."
         )
       }}<br /><a href="https://ducksmanager.net">{{
         $t("Go to DucksManager")
@@ -170,48 +170,50 @@ meta:
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 
-import { api } from "~/stores/api";
-import { coa } from "~/stores/coa";
-import { BookcaseEdgeWithPopularity, collection } from "~/stores/collection";
-import {
-  edgeCatalog,
-  edgeCategories,
-  EdgeWithVersionAndStatus,
-} from "~/stores/edgeCatalog";
-import { GET__edges__wanted__data } from "~dm_types/routes";
+import { edgeCatalog } from "~/stores/edgeCatalog";
 
-import { call } from "../../axios-helper";
+const {
+  edges: { services: edgesServices },
+} = injectLocal(dmSocketInjectionKey)!;
+
+import { stores as webStores } from "~web";
+import { dmSocketInjectionKey } from "~web/src/composables/useDmSocket";
+import type { BookcaseEdgeWithPopularity } from "~web/src/stores/bookcase";
 
 const { getEdgeUrl } = useSvgUtils();
 
-const collectionStore = collection();
+const collectionStore = webStores.collection();
+const bookcaseStore = webStores.bookcase();
+const usersStore = webStores.users();
+const coaStore = webStores.coa();
 const { hasRole } = collectionStore;
+const { user } = storeToRefs(collectionStore);
 
 const edgeCatalogStore = edgeCatalog();
 const { loadCatalog, canEditEdge } = edgeCatalogStore;
-const { edgesByStatus, currentEdges, isCatalogLoaded } =
+const { edgesByStatus, edgeCategories, currentEdges, isCatalogLoaded } =
   storeToRefs(edgeCatalogStore);
 
-const publicationNames = computed(() => coa().publicationNames);
+const userPhotographerPoints = computed(
+  () => usersStore.points[user.value!.id].edge_photographer
+);
 
-const isUploadableEdgesCarouselReady = ref(false as boolean);
-const mostWantedEdges = ref(null as BookcaseEdgeWithPopularity[] | null);
+const publicationNames = computed(() => webStores.coa().publicationNames);
+
+const isUploadableEdgesCarouselReady = ref<boolean>(false);
+const mostWantedEdges = ref<BookcaseEdgeWithPopularity[] | null>(null);
 
 const mostPopularIssuesInCollectionWithoutEdge = computed(() =>
   collectionStore.popularIssuesInCollectionWithoutEdge
     ?.sort(
-      (
-        { popularity: popularity1 }: { popularity: number | null },
-        { popularity: popularity2 }: { popularity: number | null },
-      ) => (popularity2 ?? 0) - (popularity1 ?? 0),
+      ({ popularity: popularity1 }, { popularity: popularity2 }) =>
+        (popularity2 ?? 0) - (popularity1 ?? 0)
     )
-    .filter((_, index) => index < 10),
+    .filter((_, index) => index < 10)
 );
 
 const loadMostWantedEdges = async () => {
-  mostWantedEdges.value = (
-    await call(api().dmApi, new GET__edges__wanted__data())
-  ).data
+  mostWantedEdges.value = (await edgesServices.getWantedEdges())
     .slice(0, 10)
     .map(
       ({
@@ -227,37 +229,40 @@ const loadMostWantedEdges = async () => {
         edgeId: 0,
         creationDate: new Date(),
         sprites: [],
-        countryCode: publicationcode.split("/")[0],
-        magazineCode: publicationcode.split("/")[0],
         issueCode: `${publicationcode} ${issuenumber}`,
         publicationcode,
         issuenumber,
         issuenumberReference: "",
         popularity: numberOfIssues,
-      }),
+      })
     );
 };
 
-(async () => {
-  await collectionStore.fetchUserPoints();
-  await collectionStore.loadPopularIssuesInCollection();
-  await collectionStore.loadBookcase();
-  await loadMostWantedEdges();
-  await loadCatalog(true);
-  await coa().fetchPublicationNames([
-    ...new Set([
-      ...collectionStore.bookcase!.map(
-        ({ countryCode, magazineCode }) => `${countryCode}/${magazineCode}`,
-      ),
-      ...mostWantedEdges.value!.map(({ publicationcode }) => publicationcode),
-      ...Object.values(currentEdges).map(
-        ({ country, magazine }: EdgeWithVersionAndStatus) =>
-          `${country}/${magazine}`,
-      ),
-    ]),
-  ]);
-  isUploadableEdgesCarouselReady.value = true;
-})();
+watch(
+  user,
+  async (newValue) => {
+    if (!newValue) {
+      return;
+    }
+    await usersStore.fetchStats([user.value!.id]);
+    await collectionStore.loadPopularIssuesInCollection();
+    await bookcaseStore.loadBookcase();
+    await loadMostWantedEdges();
+    await loadCatalog(true);
+    await coaStore.fetchPublicationNames([
+      ...new Set([
+        ...mostWantedEdges.value!.map(({ publicationcode }) => publicationcode),
+        ...Object.values(currentEdges).map(
+          ({ country, magazine }) => `${country}/${magazine}`
+        ),
+      ]),
+    ]);
+    isUploadableEdgesCarouselReady.value = true;
+  },
+  { immediate: true }
+);
+
+await collectionStore.loadUser();
 </script>
 <style scoped lang="scss">
 :deep(.carousel) {

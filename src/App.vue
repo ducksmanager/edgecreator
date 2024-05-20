@@ -1,18 +1,73 @@
 <template>
-  <router-view v-if="user" />
+  <suspense><router-view /></suspense>
 </template>
 
 <script setup lang="ts">
-import { collection } from "~/stores/collection";
+import { provideLocal } from "@vueuse/core";
+import Cookies from "js-cookie";
+
+import { buildWebStorage, useSocket } from "~socket.io-client-services/index";
+import { stores as webStores } from "~web";
+import useDmSocket, {
+  dmSocketInjectionKey,
+} from "~web/src/composables/useDmSocket";
+
+import useEdgecreatorSocket, {
+  edgecreatorSocketInjectionKey,
+} from "./composables/useEdgecreatorSocket";
+
+const session = {
+  getToken: () => Promise.resolve(Cookies.get("token")),
+  clearSession: () => {}, // Promise.resolve(Cookies.remove("token")),
+  sessionExists: () =>
+    Promise.resolve(typeof Cookies.get("token") === "string"),
+};
+
+const onConnectError = (e: Error) => {
+  const error = String(e);
+  console.error(error);
+  if (
+    error.indexOf("No token provided") !== -1 ||
+    error.indexOf("jwt expired") !== -1
+  ) {
+    location.replace(
+      `${import.meta.env.VITE_DM_URL as string}/login?redirect=${
+        window.location.href
+      }`
+    );
+  }
+};
+
+provideLocal(
+  edgecreatorSocketInjectionKey,
+  useEdgecreatorSocket(
+    inject("edgecreatorSocket") as ReturnType<typeof useSocket>,
+    {
+      session,
+      onConnectError,
+    }
+  )
+);
+
+const dmSocket = useDmSocket(
+  inject("dmSocket") as ReturnType<typeof useSocket>,
+  {
+    cacheStorage: buildWebStorage(sessionStorage),
+    session,
+    onConnectError,
+  }
+);
+
+provideLocal(dmSocketInjectionKey, dmSocket);
 const route = useRoute();
 
-const user = computed(() => collection().user);
-const userPermissions = computed(() => collection().userPermissions);
+const user = computed(() => webStores.collection().user);
+const userPermissions = computed(() => webStores.collection().userPermissions);
 
-collection().loadUser();
+webStores.collection().loadUser();
 
 watch(
-  () => user.value,
+  user,
   (newValue) => {
     if (newValue !== null) {
       if (route.matched.length && !route.meta.public && userPermissions.value) {
@@ -21,21 +76,15 @@ watch(
           !userPermissions.value?.some(
             ({ privilege, role }) =>
               role === "EdgeCreator" &&
-              ["Edition", "Admin"].includes(privilege as string),
+              ["Edition", "Admin"].includes(privilege as string)
           )
         ) {
           location.replace("/");
         }
       }
-    } else {
-      location.replace(
-        `${import.meta.env.VITE_DM_URL as string}/login?redirect=${
-          window.location.href
-        }`,
-      );
     }
   },
-  { immediate: true },
+  { immediate: true }
 );
 </script>
 

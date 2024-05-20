@@ -21,7 +21,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { OptionValue } from "~/types/OptionValue";
+import type { OptionValue } from "~/types/OptionValue";
 
 const emit = defineEmits<(e: "change", value: OptionValue) => void>();
 
@@ -29,6 +29,6 @@ const props = defineProps<{
   values: OptionValue[];
 }>();
 
-const edit = ref(false as boolean);
+const edit = ref<boolean>(false);
 const isMultiple = computed(() => props.values.length > 1 && !edit.value);
 </script>

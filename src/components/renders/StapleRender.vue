@@ -8,7 +8,8 @@
         width: 0.5,
         stroke: 'black',
         x: dimensions.width / 2 - 0.25,
-        y: dimensions.height / 2 - options.yDistanceFromCenter! - options.height,
+        y:
+          dimensions.height / 2 - options.yDistanceFromCenter! - options.height,
       }"
     >
     </rect>
@@ -27,13 +28,11 @@
 </template>
 
 <script setup lang="ts">
-import useTextTemplate from "~/composables/useTextTemplate";
 import { step } from "~/stores/step";
 import { ui } from "~/stores/ui";
 
-const { resolveHeightTemplate } = useTextTemplate();
-const rect1 = ref(null as SVGRectElement | null);
-const rect2 = ref(null as SVGRectElement | null);
+const rect1 = ref<SVGRectElement | null>(null);
+const rect2 = ref<SVGRectElement | null>(null);
 
 interface Props {
   issuenumber: string;

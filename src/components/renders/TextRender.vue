@@ -22,18 +22,19 @@
 
 <script setup lang="ts">
 import useBase64Legacy from "~/composables/useBase64Legacy";
+import { edgecreatorSocketInjectionKey } from "~/composables/useEdgecreatorSocket";
 import useTextTemplate from "~/composables/useTextTemplate";
-import { api } from "~/stores/api";
 import { step } from "~/stores/step";
 import { ui } from "~/stores/ui";
-import { GET__fs__text } from "~types/routes";
 
-import { call } from "../../../axios-helper";
+const {
+  text: { services: textServices },
+} = injectLocal(edgecreatorSocketInjectionKey)!;
 
 const { resolveIssueNumberTemplate, resolveIssueNumberPartTemplate } =
   useTextTemplate();
 
-const imageRef = ref(null as SVGImageElement | null);
+const imageRef = ref<SVGImageElement | null>(null);
 
 interface Props {
   issuenumber: string;
@@ -82,7 +83,7 @@ const textImage = ref(
     url: string;
   } | null,
 );
-const textImageOptions = ref(null as typeof props.options | null);
+const textImageOptions = ref<typeof props.options | null>(null);
 
 const effectiveText = computed(() =>
   resolveIssueNumberTemplate(
@@ -189,10 +190,6 @@ watch(
   },
 );
 
-type TypedErrorResponse<T> = {
-  response: { data: T };
-};
-
 const refreshPreview = async () => {
   if (
     JSON.stringify(textImageOptions.value) === JSON.stringify(props.options)
@@ -201,34 +198,18 @@ const refreshPreview = async () => {
   }
   textImageOptions.value = { ...props.options };
   const { fgColor, bgColor, internalWidth, font } = props.options;
-  try {
-    const textData = (
-      await call(
-        api().edgeCreatorApi,
-        new GET__fs__text({
-          query: {
-            color: fgColor.replace("#", ""),
-            colorBackground: bgColor.replace("#", ""),
-            width: Math.round(internalWidth * 100) / 100,
-            font,
-            text: effectiveText.value,
-          },
-        }),
-      )
-    ).data;
-    if ("width" in textData) {
-      textImage.value = textData;
-    } else {
-      window.alert(textData.error);
-    }
-  } catch (e) {
-    window.alert(
-      (
-        e as TypedErrorResponse<
-          GET__fs__text["resBody"]
-        > as TypedErrorResponse<{ error: string }>
-      ).response.data.error,
-    );
+
+  const textData = await textServices.getText({
+    color: fgColor.replace("#", ""),
+    colorBackground: bgColor.replace("#", ""),
+    width: Math.round(internalWidth * 100) / 100,
+    font,
+    text: effectiveText.value,
+  });
+  if (textData.results) {
+    textImage.value = textData.results;
+  } else {
+    window.alert(textData.error);
   }
 };
 const waitUntil = (

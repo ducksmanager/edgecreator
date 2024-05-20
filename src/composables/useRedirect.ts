@@ -1,20 +1,20 @@
 import { useToast } from "bootstrap-vue-next";
+import { watch } from "vue";
+import { useRoute } from "vue-router";
 
 const route = useRoute();
 
-export default () => {
-  const toast = useToast();
-  return watch(
+export default () =>
+  watch(
     () => route.hash,
     (newValue) => {
       const toastError = (message: string) =>
-        toast!.show(
-          { body: message, title: "Error" },
-          {
-            delay: 3000,
-            autoHide: true,
+        useToast().show!({
+          props: {
+            body: message,
+            title: "Error",
           },
-        );
+        });
       switch (newValue) {
         case "#401":
           toastError("You are not logged in");
@@ -28,4 +28,3 @@ export default () => {
     },
     { immediate: true },
   );
-};

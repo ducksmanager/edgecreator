@@ -29,10 +29,10 @@
 </template>
 
 <script setup lang="ts">
-import { coa } from "~/stores/coa";
 import { edgeCatalog } from "~/stores/edgeCatalog";
 import { step } from "~/stores/step";
-import { GalleryItem } from "~/types/GalleryItem";
+import type { GalleryItem } from "~/types/GalleryItem";
+import { stores as webStores } from "~web";
 
 const { loadDimensionsFromApi, loadStepsFromApi } = useModelLoad();
 
@@ -43,38 +43,38 @@ const props = withDefaults(
     hasMoreBefore?: boolean;
     hasMoreAfter?: boolean;
   }>(),
-  { selected: null, hasMoreBefore: false, hasMoreAfter: false },
+  { selected: null, hasMoreBefore: false, hasMoreAfter: false }
 );
 
 const emit = defineEmits<{
   (e: "load-more", where: "before" | "after"): void;
   (e: "change", value: string): void;
 }>();
-const items = ref([] as GalleryItem[]);
-const isPopulating = ref(false as boolean);
+
+const items = ref<GalleryItem[]>([]);
+const isPopulating = ref<boolean>(false);
 
 const publishedEdges = computed(() => edgeCatalog().publishedEdges);
 const publishedEdgesSteps = computed(() => edgeCatalog().publishedEdgesSteps);
-const issueNumbers = computed(() => coa().issueNumbers);
+const issueNumbers = computed(() => webStores.coa().issueNumbers);
 
 const populateItems = async (
   publicationcode: string,
-  itemsForPublication: Record<string, { modelId?: number; v3: boolean }>,
+  itemsForPublication: Record<string, { modelId?: number; v3: boolean }>
 ) => {
-  const [countryCode, magazineCode] = publicationcode.split("/");
   const publishedIssueModels = Object.values(itemsForPublication)
     .filter(({ modelId }) => !!modelId)
-    .map(({ modelId }) => modelId);
-  await edgeCatalog().getPublishedEdgesSteps({
+    .map(({ modelId }) => modelId) as number[];
+  await edgeCatalog().loadPublishedEdgesSteps({
     publicationcode: props.publicationcode,
-    edgeModelIds: publishedIssueModels as number[],
+    edgeModelIds: publishedIssueModels,
   });
   items.value = (
     await Promise.all(
       Object.keys(itemsForPublication).map(async (issuenumber) => {
         const url = `${
           import.meta.env.VITE_EDGES_URL as string
-        }/${countryCode}/gen/${magazineCode}.${issuenumber}.png`;
+        }/${publicationcode.replace("/", "/gen/")}.${issuenumber}.png`;
         if (itemsForPublication[issuenumber].v3) {
           return {
             name: issuenumber,
@@ -106,9 +106,9 @@ const populateItems = async (
                   issueStepWarnings[stepNumber] = [];
                 }
                 issueStepWarnings[stepNumber].push(
-                  `Step ${stepNumber}: ${error}`,
+                  `Step ${stepNumber}: ${error}`
                 );
-              },
+              }
             );
           } catch (e) {
             issueStepWarnings[-1] = [e as string];
@@ -122,7 +122,7 @@ const populateItems = async (
           } else {
             quality = Math.max(
               0,
-              1 - Object.keys(issueStepWarnings).length / issueSteps.length,
+              1 - Object.keys(issueStepWarnings).length / issueSteps.length
             );
           }
           tooltip = Object.values(issueStepWarnings).join("\n");
@@ -134,13 +134,13 @@ const populateItems = async (
           tooltip,
           url,
         };
-      }),
+      })
     )
   ).sort(({ name: name1 }, { name: name2 }) =>
     Math.sign(
       issueNumbers.value[props.publicationcode].indexOf(name1) -
-        issueNumbers.value[props.publicationcode].indexOf(name2),
-    ),
+        issueNumbers.value[props.publicationcode].indexOf(name2)
+    )
   );
 };
 
@@ -150,7 +150,7 @@ const onPublicationOrEdgeChange = async () => {
       isPopulating.value = true;
       await populateItems(
         props.publicationcode,
-        publishedEdges.value[props.publicationcode],
+        publishedEdges.value[props.publicationcode]
       );
       isPopulating.value = false;
     }

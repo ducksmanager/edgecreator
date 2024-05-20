@@ -1,40 +1,45 @@
-import { AxiosInstance } from "axios";
+import type { AxiosInstance } from "axios";
 import { defineStore } from "pinia";
 
-import { api } from "~/stores/api";
-import { EdgeWithModelId } from "~dm_types/EdgeWithModelId";
-import { GET__edges__$countrycode__$magazinecode__$issuenumbers } from "~dm_types/routes";
-import { userContributionType } from "~prisma-clients/client_dm";
-import { ModelContributor } from "~types/ModelContributor";
-import { GET__fs__browse__$imageType__$country__$magazine } from "~types/routes";
-import { SimpleUser } from "~types/SimpleUser";
-
-import { call } from "../../axios-helper";
-import { coa } from "./coa";
+import { edgecreatorSocketInjectionKey } from "~/composables/useEdgecreatorSocket";
+import type { EdgeWithModelId } from "~dm-types/EdgeWithModelId";
+import type { userContributionType } from "~prisma-clients/client_dm";
+import type { ModelContributor } from "~types/ModelContributor";
+import type { SimpleUser } from "~types/SimpleUser";
+import { stores as webStores } from "~web";
+import { dmSocketInjectionKey } from "~web/src/composables/useDmSocket";
 
 const numericSortCollator = new Intl.Collator(undefined, {
   numeric: true,
   sensitivity: "base",
 });
 export const main = defineStore("main", () => {
-  const country = ref(null as string | null),
-    magazine = ref(null as string | null),
-    issuenumbers = ref([] as string[]),
-    isRange = ref(false as boolean),
-    photoUrls = ref({} as Record<string, string>),
-    contributors = ref([] as ModelContributor[]),
-    edgesBefore = ref([] as EdgeWithModelId[]),
-    edgesAfter = ref([] as EdgeWithModelId[]),
-    publicationElements = ref([] as string[]),
-    publicationPhotos = ref([] as string[]),
-    warnings = ref([] as string[]),
+  const {
+    browse: { services: browseServices },
+  } = injectLocal(edgecreatorSocketInjectionKey)!;
+  const {
+    edges: { services: edgesServices },
+  } = injectLocal(dmSocketInjectionKey)!;
+
+  const country = ref<string | null>(null),
+    magazine = ref<string | null>(null),
+    issuenumbers = ref<string[]>([]),
+    isRange = ref<boolean>(false),
+    photoUrls = ref<Record<string, string>>({}),
+    contributors = ref<ModelContributor[]>([]),
+    edgesBefore = ref<EdgeWithModelId[]>([]),
+    edgesAfter = ref<EdgeWithModelId[]>([]),
+    publicationElements = ref<string[]>([]),
+    publicationPhotos = ref<string[]>([]),
+    warnings = ref<string[]>([]),
     publicationcode = computed(
       () =>
         country.value && magazine.value && `${country.value}/${magazine.value}`,
     ),
     publicationIssues = computed(
       () =>
-        (publicationcode.value && coa().issueNumbers[publicationcode.value]) ||
+        (publicationcode.value &&
+          webStores.coa().issueNumbers[publicationcode.value]) ||
         [],
     ),
     publicationElementsForGallery = computed(
@@ -128,17 +133,12 @@ export const main = defineStore("main", () => {
     },
     loadItems = async ({ itemType }: { itemType: "elements" | "photos" }) => {
       const items = (
-        await call(
-          api().edgeCreatorApi,
-          new GET__fs__browse__$imageType__$country__$magazine({
-            params: {
-              imageType: itemType,
-              country: country.value!,
-              magazine: magazine.value!,
-            },
-          }),
-        )
-      ).data.sort((a, b) => numericSortCollator.compare(a, b));
+        await browseServices.listEdgeParts({
+          imageType: itemType,
+          country: country.value!,
+          magazine: magazine.value!,
+        })
+      ).results!.sort((a, b) => numericSortCollator.compare(a, b));
       if (itemType === "elements") {
         publicationElements.value = items;
       } else {
@@ -146,23 +146,12 @@ export const main = defineStore("main", () => {
       }
     },
     loadPublicationIssues = async () =>
-      coa().fetchIssueNumbers([publicationcode.value!]),
+      webStores.coa().fetchIssueNumbers([publicationcode.value!]),
     getEdgePublicationStates = async (edges: string[]) =>
       [
         ...new Set(
-          Object.values<EdgeWithModelId[]>(
-            (
-              await call(
-                api().dmApi,
-                new GET__edges__$countrycode__$magazinecode__$issuenumbers({
-                  params: {
-                    countrycode: publicationcode.value!.split("/")[0],
-                    magazinecode: publicationcode.value!.split("/")[1],
-                    issuenumbers: edges.join(","),
-                  },
-                }),
-              )
-            ).data,
+          Object.values(
+            await edgesServices.getEdges(publicationcode.value!, edges),
           ),
         ),
       ].sort((a, b) =>

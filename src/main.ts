@@ -3,13 +3,16 @@ import "bootstrap-vue-next/dist/bootstrap-vue-next.css";
 import "vue3-simple-typeahead/dist/vue3-simple-typeahead.css"; //Optional default CSS
 
 import { createHead } from "@unhead/vue";
-import { BCarousel, BToastPlugin } from "bootstrap-vue-next";
+import { BCarousel } from "bootstrap-vue-next";
 import { createPinia } from "pinia";
 import { setupLayouts } from "virtual:generated-layouts";
 import generatedRoutes from "virtual:generated-pages";
 import { createApp } from "vue";
-import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
+import type { RouteRecordRaw } from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 import SimpleTypeahead from "vue3-simple-typeahead";
+
+import { useSocket } from "~socket.io-client-services";
 
 import App from "./App.vue";
 import i18n from "./i18n";
@@ -23,14 +26,17 @@ const router = createRouter({
 
 const store = createPinia();
 
-const app = createApp(App);
-app.component("BCarousel", BCarousel);
-app.component("BCarouselSlide", BCarousel);
-
-app.use(SimpleTypeahead);
-app.use(i18n);
-app.use(store);
-app.use(BToastPlugin);
-app.use(head);
-app.use(router);
-app.mount("#app");
+createApp(App)
+  .component("BCarousel", BCarousel)
+  .component("BCarouselSlide", BCarousel)
+  .use(SimpleTypeahead)
+  .use(i18n)
+  .use(store)
+  .use(head)
+  .use(router)
+  .provide("dmSocket", useSocket(import.meta.env.VITE_DM_SOCKET_URL))
+  .provide(
+    "edgecreatorSocket",
+    useSocket(import.meta.env.VITE_EDGECREATOR_SOCKET_URL)
+  )
+  .mount("#app");

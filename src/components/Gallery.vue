@@ -85,7 +85,7 @@
 
 <script setup lang="ts">
 import { main } from "~/stores/main";
-import { GalleryItem } from "~/types/GalleryItem";
+import type { GalleryItem } from "~/types/GalleryItem";
 
 withDefaults(
   defineProps<{
@@ -104,9 +104,9 @@ withDefaults(
 
 const emit = defineEmits<(e: "change", value: string) => void>();
 
-const clickedImage = ref(null as GalleryItem | null);
-const showUploadModal = ref(false as boolean);
-const showChooseImageModal = ref(false as boolean);
+const clickedImage = ref<GalleryItem | null>(null);
+const showUploadModal = ref<boolean>(false);
+const showChooseImageModal = ref<boolean>(false);
 
 const country = computed(() => main().country);
 const magazine = computed(() => main().magazine);

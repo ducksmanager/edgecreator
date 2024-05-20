@@ -145,21 +145,21 @@
                 <li>
                   {{
                     $t(
-                      "If you want your changes to be applied to a single edge, click on its issue number.",
+                      "If you want your changes to be applied to a single edge, click on its issue number."
                     )
                   }}
                 </li>
                 <li>
                   {{
                     $t(
-                      "If you want to add an edge to the list of edges to apply changes on, click on its issue number while maintaining the Shift key pressed.",
+                      "If you want to add an edge to the list of edges to apply changes on, click on its issue number while maintaining the Shift key pressed."
                     )
                   }}
                 </li>
                 <li>
                   {{
                     $t(
-                      "If you want to apply your changes to all the edges at the same time, double-click on any issue number.",
+                      "If you want to apply your changes to all the edges at the same time, double-click on any issue number."
                     )
                   }}
                 </li>
@@ -258,20 +258,18 @@
 </template>
 <script setup lang="ts">
 import surroundingEdge from "~/composables/useSurroundingEdge";
-import { coa } from "~/stores/coa";
-import { collection } from "~/stores/collection";
 import { main } from "~/stores/main";
 import { ui } from "~/stores/ui";
+import { stores as webStores } from "~web";
 
 const uiStore = ui();
 const mainStore = main();
 
 const { showPreviousEdge, showNextEdge } = surroundingEdge();
-const { hasRole } = collection();
+const { hasRole } = webStores.collection();
 
 interface ModelToClone {
   editMode: string;
-  countryCode: string;
   publicationCode: string;
   issueNumber: string;
   issueNumberEnd: string;
@@ -289,32 +287,37 @@ const props = defineProps<{
   };
 }>();
 
-const showPhotoModal = ref(false as boolean);
-const modelToBeCloned = ref(null as ModelToClone | null);
-const collapseDimensions = ref(false as boolean);
-const collapseClone = ref(false as boolean);
+const showPhotoModal = ref<boolean>(false);
+const modelToBeCloned = ref<ModelToClone | null>(null);
+const collapseDimensions = ref<boolean>(false);
+const collapseClone = ref<boolean>(false);
 
 const hasPhotoUrl = computed(() => Object.keys(mainStore.photoUrls).length);
 const publicationName = computed(
-  () => coa().publicationNames[`${mainStore.country!}/${mainStore.magazine!}`],
+  () =>
+    webStores.coa().publicationNames[
+      `${mainStore.country!}/${mainStore.magazine!}`
+    ]
 );
 const uniqueDimensions = computed(() =>
   [
     ...new Set(
-      Object.values(props.dimensions).map((item) => JSON.stringify(item)),
+      Object.values(props.dimensions).map((item) => JSON.stringify(item))
     ),
-  ].map((item) => JSON.parse(item) as { width: number; height: number }),
+  ].map((item) => JSON.parse(item) as { width: number; height: number })
 );
 
 const isEditingMultiple = computed(
-  () => mainStore.isRange || mainStore.issuenumbers.length > 1,
+  () => mainStore.isRange || mainStore.issuenumbers.length > 1
 );
 
 const addPhoto = (src: string) => {
   mainStore.photoUrls[mainStore.issuenumbers[0]] = src;
 };
 
-coa().fetchPublicationNames([`${mainStore.country!}/${mainStore.magazine!}`]);
+webStores
+  .coa()
+  .fetchPublicationNames([`${mainStore.country!}/${mainStore.magazine!}`]);
 </script>
 <style lang="scss">
 .options {

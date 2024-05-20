@@ -1,20 +1,9 @@
 import { defineStore } from "pinia";
 
-import { api } from "~/stores/api";
-import { EdgeModel } from "~dm_types/EdgeModel";
-import { ModelSteps } from "~dm_types/ModelSteps";
-import {
-  GET__edgecreator__model,
-  GET__edgecreator__model__$modelIds__steps,
-  GET__edgecreator__model__editedbyother__all,
-  GET__edgecreator__model__unassigned__all,
-  GET__edges__$countrycode__$magazinecode__$issuenumbers,
-} from "~dm_types/routes";
-
-import { call, getChunkedRequests } from "../../axios-helper";
-import { coa } from "./coa";
-import { collection } from "./collection";
-import { users } from "./users";
+import { edgecreatorSocketInjectionKey } from "~/composables/useEdgecreatorSocket";
+import type { ModelSteps } from "~dm-types/ModelSteps";
+import { stores as webStores } from "~web";
+import { dmSocketInjectionKey } from "~web/src/composables/useDmSocket";
 
 const { getSvgMetadata, loadSvgFromString } = useSvgUtils();
 
@@ -32,38 +21,40 @@ export type EdgeWithVersionAndStatus = Edge & {
   published?: string | null;
 };
 
-export const edgeCategories = [
-  {
-    status: "ongoing",
-    l10n: "Ongoing edges",
-    apiCall: GET__edgecreator__model,
-    svgCheckFn: (edge: Edge, currentUser: string) =>
-      edge.designers.includes(currentUser),
-  },
-  {
-    status: "ongoing by another user",
-    l10n: "Ongoing edges handled by other users",
-    apiCall: GET__edgecreator__model__editedbyother__all,
-    svgCheckFn: (edge: Edge) => edge.designers.length,
-  },
-  {
-    status: "pending",
-    l10n: "Pending edges",
-    apiCall: GET__edgecreator__model__unassigned__all,
-    svgCheckFn: () => true,
-  },
-];
-
 export const edgeCatalog = defineStore("edgeCatalog", () => {
-  const isCatalogLoaded = ref(false as boolean),
-    currentEdges = ref({} as Record<string, EdgeWithVersionAndStatus>),
+  const {
+    edgeCreator: { services: edgeCreatorServices },
+    edges: { services: edgesServices },
+  } = injectLocal(dmSocketInjectionKey)!;
+
+  const edgeCategories = [
+    {
+      status: "ongoing",
+      l10n: "Ongoing edges",
+      svgCheckFn: (edge: Edge, currentUser: string) =>
+        edge.designers.includes(currentUser),
+    },
+    {
+      status: "ongoing by another user",
+      l10n: "Ongoing edges handled by other users",
+      svgCheckFn: (edge: Edge) => edge.designers.length,
+    },
+    {
+      status: "pending",
+      l10n: "Pending edges",
+      svgCheckFn: () => true,
+    },
+  ];
+
+  const {
+    browse: { services: browseServices },
+  } = injectLocal(edgecreatorSocketInjectionKey)!;
+  const isCatalogLoaded = ref<boolean>(false),
+    currentEdges = ref<Record<string, EdgeWithVersionAndStatus>>({}),
     publishedEdges = ref(
-      {} as Record<
-        string,
-        Record<string, { issuenumber: string; v3: boolean }>
-      >,
+      {} as Record<string, Record<string, { issuenumber: string; v3: boolean }>>
     ),
-    publishedEdgesSteps = ref({} as Record<string, ModelSteps>),
+    publishedEdgesSteps = ref<Record<string, ModelSteps>>({}),
     edgesByStatus = computed(() => {
       const currentEdgesByStatus: Record<
         string,
@@ -73,7 +64,7 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
           ...acc,
           [status]: {},
         }),
-        {},
+        {}
       );
       return Object.values(currentEdges.value).reduce(
         (acc: typeof currentEdgesByStatus, edge) => {
@@ -84,20 +75,16 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
           acc[edge.status!][publicationcode].push(edge);
           return acc;
         },
-        currentEdgesByStatus,
+        currentEdgesByStatus
       );
     }),
     fetchPublishedEdges = async (publicationcode: string) => {
       const [countrycode, magazinecode] = publicationcode.split("/");
       addPublishedEdges({
-        [publicationcode]: (
-          await call(
-            api().dmApi,
-            new GET__edges__$countrycode__$magazinecode__$issuenumbers({
-              params: { countrycode, magazinecode, issuenumbers: "_" },
-            }),
-          )
-        ).data,
+        [publicationcode]: await edgesServices.getEdges(
+          `${countrycode}/${magazinecode}`,
+          undefined
+        ),
       });
     },
     addCurrentEdges = (edges: Record<string, EdgeWithVersionAndStatus>) => {
@@ -107,7 +94,7 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
       newPublishedEdges: Record<
         string,
         Record<string, { issuenumber: string; v3: boolean }>
-      >,
+      >
     ) => {
       for (const publicationcode of Object.keys(newPublishedEdges)) {
         const publicationEdgesForPublication =
@@ -142,7 +129,7 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
         ...newPublishedEdgesSteps,
       };
     },
-    getPublishedEdgesSteps = async ({
+    loadPublishedEdgesSteps = async ({
       publicationcode,
       edgeModelIds,
     }: {
@@ -156,60 +143,52 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
 
       addPublishedEdgesSteps({
         publicationcode,
-        newPublishedEdgesSteps:
-          await getChunkedRequests<GET__edgecreator__model__$modelIds__steps>({
-            callFn: (chunk) =>
-              call(
-                api().dmApi,
-                new GET__edgecreator__model__$modelIds__steps({
-                  params: { modelIds: chunk },
-                }),
-              ),
-            valuesToChunk: newModelIds.map((modelId) => String(modelId)),
-            chunkSize: 10,
-          }),
+        newPublishedEdgesSteps: await edgeCreatorServices.getModelsSteps(
+          newModelIds.map((modelId) => modelId)
+        ),
       });
     },
-    getEdgeFromApi = (
-      { country, magazine, issuenumber, contributors, photos }: EdgeModel,
-      status: string,
-    ) => {
-      const issuecode = `${country}/${magazine} ${issuenumber}`;
-      const getContributorsOfType = (contributionType: string) =>
-        (contributors ?? [])
-          .filter(({ contribution }) => contribution === contributionType)
-          .map(
-            ({ userId }) =>
-              users().allUsers!.find(({ id }) => id === userId)!
-                .username as string,
-          );
-      const photo = photos?.find(({ isMainPhoto }) => isMainPhoto);
-      return {
-        country,
-        magazine,
-        issuenumber,
-        issuecode,
-        v3: false,
-        designers: getContributorsOfType("createur"),
-        photographers: getContributorsOfType("photographe"),
-        photo: photo?.elementImage.fileName,
-        status,
-      };
-    },
+    // getEdgeFromApi = (
+    //   { country, magazine, issuenumber, contributors, photos }: EdgeModel,
+    //   status: string
+    // ) => {
+    //   const issuecode = `${country}/${magazine} ${issuenumber}`;
+    //   const getContributorsOfType = (contributionType: string) =>
+    //     (contributors ?? [])
+    //       .filter(({ contribution }) => contribution === contributionType)
+    //       .map(
+    //         ({ userId }) =>
+    //           users().allUsers!.find(({ id }) => id === userId)!
+    //             .username as string
+    //       );
+    //   const photo = photos?.find(({ isMainPhoto }) => isMainPhoto);
+    //   return {
+    //     country,
+    //     magazine,
+    //     issuenumber,
+    //     issuecode,
+    //     v3: false,
+    //     designers: getContributorsOfType("createur"),
+    //     photographers: getContributorsOfType("photographe"),
+    //     photo: photo?.elementImage.fileName,
+    //     status,
+    //   };
+    // },
     getEdgeFromSvg = (edge: Edge): EdgeWithVersionAndStatus => ({
       ...edge,
       v3: true,
       status: edgeCategories.reduce(
         (acc: string | null, { status, svgCheckFn }) =>
           acc ??
-          (svgCheckFn(edge, collection().user!.username as string)
+          (svgCheckFn(edge, webStores.collection().user!.username)
             ? status
             : null),
-        null,
+        null
       ),
     }),
     canEditEdge = (status: string) =>
-      collection().hasRole("Admin") || status !== "ongoing by another user",
+      webStores.collection().hasRole("Admin") ||
+      status !== "ongoing by another user",
     getEdgeStatus = ({
       country,
       magazine,
@@ -242,23 +221,13 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
       let newCurrentEdges: typeof currentEdges.value = {};
       const publishedSvgEdges: typeof publishedEdges.value = {};
 
-      for (const { status, apiCall } of edgeCategories) {
-        const data = (await call(api().dmApi, new apiCall())).data;
-        newCurrentEdges = data.reduce((acc, edgeData) => {
-          const edge = getEdgeFromApi(edgeData, status);
-          return { ...acc, [edge.issuecode]: edge };
-        }, newCurrentEdges);
-      }
-
-      const edges = (
-        await call(api().edgeCreatorApi, new GET__fs__browseEdges())
-      ).data;
+      const edges = (await browseServices.listEdgeModels()).results;
       for (const edgeStatus in edges) {
         for (const { filename, mtime } of edges[
-          edgeStatus as "current" | "published"
+          edgeStatus as keyof typeof edges
         ]) {
           const [, country, magazine, issuenumber] = filename.match(
-            /([^/]+)\/gen\/_?([^.]+)\.(.+).svg$/,
+            /([^/]+)\/gen\/_?([^.]+)\.(.+).svg$/
           )!;
           // if ([country, magazine, issuenumber].includes(undefined)) {
           //   console.error(`Invalid SVG file name : ${fileName}`);
@@ -280,15 +249,15 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
                 magazine,
                 issuenumber,
                 mtime,
-                edgeStatus === "published",
+                edgeStatus === "published"
               ).then(({ country, magazine, issuenumber, svgChildNodes }) => {
                 const designers = getSvgMetadata(
                   svgChildNodes,
-                  "contributor-designer",
+                  "contributor-designer"
                 );
                 const photographers = getSvgMetadata(
                   svgChildNodes,
-                  "contributor-photographer",
+                  "contributor-photographer"
                 );
 
                 const publicationcode = `${country}/${magazine}`;
@@ -313,24 +282,26 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
             }
           } catch (e) {
             console.error(
-              `No SVG found : ${country}/${magazine} ${issuenumber}`,
+              `No SVG found : ${country}/${magazine} ${issuenumber}`
             );
           }
         }
       }
 
       if (Object.keys(newCurrentEdges).length) {
-        await coa().fetchPublicationNames([
-          ...new Set(
-            Object.values(newCurrentEdges).map(
-              ({ country, magazine }) => `${country}/${magazine}`,
+        await webStores
+          .coa()
+          .fetchPublicationNames([
+            ...new Set(
+              Object.values(newCurrentEdges).map(
+                ({ country, magazine }) => `${country}/${magazine}`
+              )
             ),
-          ),
-        ]);
+          ]);
 
         for (const edgeIssueCode of Object.keys(newCurrentEdges)) {
           newCurrentEdges[edgeIssueCode].published = getEdgeStatus(
-            newCurrentEdges[edgeIssueCode],
+            newCurrentEdges[edgeIssueCode]
           );
         }
 
@@ -356,6 +327,6 @@ export const edgeCatalog = defineStore("edgeCatalog", () => {
     addCurrentEdges,
     addPublishedEdges,
     addPublishedEdgesSteps,
-    getPublishedEdgesSteps,
+    loadPublishedEdgesSteps,
   };
 });

@@ -30,9 +30,8 @@
 </template>
 
 <script setup lang="ts">
-import { BookcaseEdge } from "~dm_types/BookcaseEdge";
+import type { BookcaseEdge } from "~dm-types/BookcaseEdge";
 interface BookcaseEdgeWithPopularity extends BookcaseEdge {
-  publicationcode: string;
   issueCode: string;
   popularity?: number | undefined;
 }
